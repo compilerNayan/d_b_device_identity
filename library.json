@@ -1,0 +1,17 @@
+{
+  "name": "d_b_device_identity",
+  "version": "1.0.0",
+  "description": "A header-only Arduino/PlatformIO device identity library",
+  "keywords": ["arduino", "device", "identity"],
+  "authors": [{"name": "Nayan"}],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/compilerNayan/d_b_device_identity.git"
+  },
+  "dependencies": {
+    "b_a_osal": "https://github.com/compilerNayan/b_a_osal.git"
+  },
+  "license": "MIT",
+  "frameworks": "*",
+  "platforms": "*"
+}
