@@ -12,20 +12,15 @@ class ConnectionConfig {
     /* @Id */
     Public optional<int> id;
 
-    /* @NotNull */
-    optional<StdString> mqttEndpoint;
+    Public optional<StdString> mqttEndpoint;
 
-    /* @NotNull */
-    optional<MqttCredentials> enrollmentCredentials;
+    Public optional<MqttCredentials> enrollmentCredentials;
 
-    /* @NotNull */
-    optional<MqttCredentials> connectionCredentials;
+    Public optional<MqttCredentials> connectionCredentials;
 
-    /* @NotNull */
-    optional<PublishTopics> publishTopics;
+    Public optional<PublishTopics> publishTopics;
 
-    /* @NotNull */
-    optional<SubscribeTopics> subscribeTopics;
+    Public optional<SubscribeTopics> subscribeTopics;
 
 };
 
