@@ -3,6 +3,8 @@
 
 #include <StandardDefines.h>
 
+#include "../entity/MqttCredentials.h"
+
 DefineStandardPointers(IDeviceService)
 class IDeviceService {
     Public Virtual ~IDeviceService() = default;
