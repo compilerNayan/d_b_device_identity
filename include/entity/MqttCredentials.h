@@ -3,7 +3,7 @@
 
 #include <StandardDefines.h>
 
-/* @Serializable */
+/* @Entity */
 class MqttCredentials {
 
     /* @NotNull */
