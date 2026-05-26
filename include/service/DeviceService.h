@@ -45,11 +45,11 @@ class DeviceService : public IDeviceService {
 
         if (connectionConfigOpt.has_value()) {
             Val connectionConfig = connectionConfigOpt.value();
-            Val mqttEndpointOpt = connectionConfig->mqttEndpoint;
-            Val enrollmentCredentialsOpt = connectionConfig->enrollmentCredentials;
-            Val connectionCredentialsOpt = connectionConfig->connectionCredentials;
-            Val publishTopicsOpt = connectionConfig->publishTopics;
-            Val subscribeTopicsOpt = connectionConfig->subscribeTopics;
+            Val mqttEndpointOpt = connectionConfig.mqttEndpoint;
+            Val enrollmentCredentialsOpt = connectionConfig.enrollmentCredentials;
+            Val connectionCredentialsOpt = connectionConfig.connectionCredentials;
+            Val publishTopicsOpt = connectionConfig.publishTopics;
+            Val subscribeTopicsOpt = connectionConfig.subscribeTopics;
             this->mqttEndpoint = mqttEndpointOpt.has_value() ? mqttEndpointOpt.value() : "";
 
             MqttCredentials enrollmentCredentials = MqttCredentials();
@@ -58,8 +58,7 @@ class DeviceService : public IDeviceService {
             enrollmentCredentials.clientPrivateKeyPem = "";
 
             if (enrollmentCredentialsOpt.has_value()) {
-                Val enrollmentCredentials = enrollmentCredentialsOpt.value();
-                enrollmentCredentials = enrollmentCredentials.value();
+                enrollmentCredentials = enrollmentCredentialsOpt.value();
                 this->enrollmentCredentials = enrollmentCredentials;
             }
 

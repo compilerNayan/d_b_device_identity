@@ -11,8 +11,8 @@ class ConnectionConfigRepository : public CpaRepository<ConnectionConfig, int> {
     Public Virtual ~ConnectionConfigRepository() = default;
 
     Public Virtual Void UpdateEnrollmentCredentials(const MqttCredentials& enrollmentCredentials) {
-        Var connectionConfigOpt = FindOne();
-        If (connectionConfigOpt.has_value()) {
+        Var connectionConfigOpt = FindFirst();
+        if (connectionConfigOpt.has_value()) {
             Var connectionConfig = connectionConfigOpt.value();
             connectionConfig.enrollmentCredentials = enrollmentCredentials;
             Update(connectionConfig);
@@ -20,8 +20,8 @@ class ConnectionConfigRepository : public CpaRepository<ConnectionConfig, int> {
     }
 
     Public Virtual Void UpdateConnectionCredentials(const MqttCredentials& connectionCredentials) {
-        Var connectionConfigOpt = FindOne();
-        If (connectionConfigOpt.has_value()) {
+        Var connectionConfigOpt = FindFirst();
+        if (connectionConfigOpt.has_value()) {
             Var connectionConfig = connectionConfigOpt.value();
             connectionConfig.connectionCredentials = connectionCredentials;
             Update(connectionConfig);

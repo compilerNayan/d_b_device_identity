@@ -7,16 +7,16 @@
 class PublishTopics {
 
     /* @NotNull */
-    optional<StdString> statusTopic;
+    Public optional<StdString> statusTopic;
 
     /* @NotNull */
-    optional<StdString> telemetryTopic;
+    Public optional<StdString> telemetryTopic;
 
     /* @NotNull */
-    optional<StdString> logsTopic;
+    Public optional<StdString> logsTopic;
 
     /* @NotNull */
-    optional<StdString> eventsTopic;
+    Public optional<StdString> eventsTopic;
 
 };
 

@@ -7,13 +7,13 @@
 class SubscribeTopics {
 
     /* @NotNull */
-    optional<StdString> commandTopic;
+    Public optional<StdString> commandTopic;
 
     /* @NotNull */
-    optional<StdString> otaUpdateTopic;
+    Public optional<StdString> otaUpdateTopic;
 
     /* @NotNull */
-    optional<StdString> featureFlagTopic;
+    Public optional<StdString> featureFlagTopic;
 };
 
 #endif // SUBSCRIBETOPICS_H

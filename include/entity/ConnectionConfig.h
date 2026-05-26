@@ -10,7 +10,7 @@
 class ConnectionConfig {
 
     /* @Id */
-    Public optional<Int> id;
+    Public optional<int> id;
 
     /* @NotNull */
     optional<StdString> mqttEndpoint;
