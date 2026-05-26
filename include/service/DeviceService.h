@@ -4,6 +4,7 @@
 #include "IDeviceService.h"
 #include "../repository/ConnectionConfigRepository.h"
 
+/* @Service */
 class DeviceService : public IDeviceService {
     Public DeviceService() {
         Refresh();
