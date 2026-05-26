@@ -3,7 +3,7 @@
 
 #include <StandardDefines.h>
 
-/* @Entity */
+/* @Serializable */
 class PublishTopics {
 
     /* @NotNull */

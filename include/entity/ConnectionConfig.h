@@ -6,7 +6,7 @@
 #include "PublishTopics.h"
 #include "SubscribeTopics.h"
 
-/* @Serializable */
+/* @Entity */
 class ConnectionConfig {
 
     /* @Id */
