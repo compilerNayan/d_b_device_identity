@@ -1,10 +1,13 @@
-#ifndef MQTTCREDENTIALS_H
-#define MQTTCREDENTIALS_H
+#ifndef MQTTCREDENTIALSDTO_H
+#define MQTTCREDENTIALSDTO_H
 
 #include <StandardDefines.h>
 
-/* @Serializable */
-class MqttCredentials {
+/* @Dto */
+class MqttCredentialsDto {
+
+    /* @NotNull */
+    Public optional<StdString> mqttEndpoint;
 
     /* @NotNull */
     Public optional<StdString> caCertificatePem;
@@ -14,6 +17,5 @@ class MqttCredentials {
 
     /* @NotNull */
     Public optional<StdString> clientPrivateKeyPem;
-};
 
-#endif // MQTTCREDENTIALS_H
+};

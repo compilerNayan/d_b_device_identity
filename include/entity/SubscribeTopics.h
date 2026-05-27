@@ -3,16 +3,16 @@
 
 #include <StandardDefines.h>
 
-/* @Serializable */
+/* @Entity */
 class SubscribeTopics {
 
-    /* @NotNull */
+    /* @Id */
+    Public optional<int> id;
+
     Public optional<StdString> commandTopic;
 
-    /* @NotNull */
     Public optional<StdString> otaUpdateTopic;
 
-    /* @NotNull */
     Public optional<StdString> featureFlagTopic;
 };
 

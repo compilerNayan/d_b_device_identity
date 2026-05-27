@@ -3,7 +3,7 @@
 
 #include <StandardDefines.h>
 
-#include "../entity/MqttCredentials.h"
+#include "../dto/MqttCredentialsDto.h"
 
 DefineStandardPointers(IDeviceService)
 class IDeviceService {
@@ -13,13 +13,11 @@ class IDeviceService {
     Public Virtual StdString GetDeviceSecret() const = 0;
     Public Virtual StdString GetFirmwareVersion() const = 0;
 
-    Public Virtual StdString GetMqttEndpoint() const = 0;
-
     // Enrollment credentials
-    Public Virtual MqttCredentials GetEnrollmentCredentials() const = 0;
+    Public Virtual MqttCredentialsDto GetEnrollmentCredentials() const = 0;
 
     // Connection credentials
-    Public Virtual Optional<MqttCredentials> GetConnectionCredentials() const = 0;
+    Public Virtual Optional<MqttCredentialsDto> GetConnectionCredentials() const = 0;
 
     Public Virtual StdSet<StdString> GetSubscribeTopics() const = 0;
     

@@ -2,7 +2,10 @@
 #define DEVICESERVICE_H
 
 #include "IDeviceService.h"
-#include "../repository/ConnectionConfigRepository.h"
+#include "../repository/EnrollmentCredentialsRepository.h"
+#include "../repository/ConnectionCredentialsRepository.h"
+#include "../repository/PublishTopicsRepository.h"
+#include "../repository/SubscribeTopicsRepository.h"
 
 /* @Service */
 class DeviceService : public IDeviceService {
@@ -12,15 +15,23 @@ class DeviceService : public IDeviceService {
     Public Virtual ~DeviceService() = default;
 
     /* @Autowired */
-    Private ConnectionConfigRepositoryPtr connectionConfigRepository;
+    Private EnrollmentCredentialsRepositoryPtr enrollmentCredentialsRepository;
+
+    /* @Autowired */
+    Private ConnectionCredentialsRepositoryPtr connectionCredentialsRepository;
+
+    /* @Autowired */
+    Private PublishTopicsRepositoryPtr publishTopicsRepository;
+
+    /* @Autowired */
+    Private SubscribeTopicsRepositoryPtr subscribeTopicsRepository;
 
     Private StdString serialNumber;
     Private StdString deviceSecret;
     Private StdString firmwareVersion;
-    Private StdString mqttEndpoint;
 
-    Private MqttCredentials enrollmentCredentials;
-    Private Optional<MqttCredentials> connectionCredentials;
+    Private MqttCredentialsDto enrollmentCredentials;
+    Private Optional<MqttCredentialsDto> connectionCredentials;
 
     Private StdSet<StdString> subscribeTopics;
     Private StdString commandTopic;
@@ -36,50 +47,49 @@ class DeviceService : public IDeviceService {
     Private mutable std::mutex mutex_;
 
     Public Void Refresh() override {
-        Val connectionConfigOpt = connectionConfigRepository->FindFirst();
+        Val enrollmentCredentialsOpt = enrollmentCredentialsRepository->FindFirst();
+        Val connectionCredentialsOpt = connectionCredentialsRepository->FindFirst();
+        Val publishTopicsOpt = publishTopicsRepository->FindFirst();
+        Val subscribeTopicsOpt = subscribeTopicsRepository->FindFirst();
 
         std::lock_guard<std::mutex> lock(mutex_);
         serialNumber = "1234";
         deviceSecret = "1234";
         firmwareVersion = "1.0.0";
 
-        if (connectionConfigOpt.has_value()) {
-            Val connectionConfig = connectionConfigOpt.value();
-            Val mqttEndpointOpt = connectionConfig.mqttEndpoint;
-            Val enrollmentCredentialsOpt = connectionConfig.enrollmentCredentials;
-            Val connectionCredentialsOpt = connectionConfig.connectionCredentials;
-            Val publishTopicsOpt = connectionConfig.publishTopics;
-            Val subscribeTopicsOpt = connectionConfig.subscribeTopics;
-            this->mqttEndpoint = mqttEndpointOpt.has_value() ? mqttEndpointOpt.value() : "";
 
-            MqttCredentials enrollmentCredentials = MqttCredentials();
-            enrollmentCredentials.caCertificatePem = "";
-            enrollmentCredentials.clientCertificatePem = "";
-            enrollmentCredentials.clientPrivateKeyPem = "";
+        if (enrollmentCredentialsOpt.has_value()) {
+            Val enrollmentCredentials = enrollmentCredentialsOpt.value();
+            this->enrollmentCredentialsDto = GetMqttCredentialsDto(enrollmentCredentials);
+        } else {
+            MqttCredentialsDto enrollmentCredentialsDto;
+            enrollmentCredentialsDto.mqttEndpoint = "";
+            enrollmentCredentialsDto.caCertificatePem = "";
+            enrollmentCredentialsDto.clientCertificatePem = "";
+            enrollmentCredentialsDto.clientPrivateKeyPem = "";
+            this->enrollmentCredentialsDto = enrollmentCredentialsDto;
+        }
 
-            if (enrollmentCredentialsOpt.has_value()) {
-                enrollmentCredentials = enrollmentCredentialsOpt.value();
-                this->enrollmentCredentials = enrollmentCredentials;
-            }
+        if(connectionCredentialsOpt.has_value()) {
+            Val connectionCredentials = connectionCredentialsOpt.value();
+            this->connectionCredentialsDto = GetMqttCredentialsDto(connectionCredentials);
+        } else {
+            this->connectionCredentialsDto = nullopt;
+        }
 
-            if (connectionCredentialsOpt.has_value()) {
-                this->connectionCredentials = connectionCredentialsOpt.value();
-            }
+        if (publishTopicsOpt.has_value()) {
+            Val publishTopics = publishTopicsOpt.value();
+            this->statusTopic = publishTopics.statusTopic.has_value() ? publishTopics.statusTopic.value() : "";
+            this->telemetryTopic = publishTopics.telemetryTopic.has_value() ? publishTopics.telemetryTopic.value() : "";
+            this->logsTopic = publishTopics.logsTopic.has_value() ? publishTopics.logsTopic.value() : "";
+            this->eventsTopic = publishTopics.eventsTopic.has_value() ? publishTopics.eventsTopic.value() : "";
+        }
 
-            if (publishTopicsOpt.has_value()) {
-                Val publishTopics = publishTopicsOpt.value();
-                this->statusTopic = publishTopics.statusTopic.has_value() ? publishTopics.statusTopic.value() : "";
-                this->telemetryTopic = publishTopics.telemetryTopic.has_value() ? publishTopics.telemetryTopic.value() : "";
-                this->logsTopic = publishTopics.logsTopic.has_value() ? publishTopics.logsTopic.value() : "";
-                this->eventsTopic = publishTopics.eventsTopic.has_value() ? publishTopics.eventsTopic.value() : "";
-            }
-
-            if (subscribeTopicsOpt.has_value()) {
-                Val subscribeTopics = subscribeTopicsOpt.value();
-                this->commandTopic = subscribeTopics.commandTopic.has_value() ? subscribeTopics.commandTopic.value() : "";
-                this->otaUpdateTopic = subscribeTopics.otaUpdateTopic.has_value() ? subscribeTopics.otaUpdateTopic.value() : "";
-                this->featureFlagTopic = subscribeTopics.featureFlagTopic.has_value() ? subscribeTopics.featureFlagTopic.value() : "";
-            }
+        if (subscribeTopicsOpt.has_value()) {
+            Val subscribeTopics = subscribeTopicsOpt.value();
+            this->commandTopic = subscribeTopics.commandTopic.has_value() ? subscribeTopics.commandTopic.value() : "";
+            this->otaUpdateTopic = subscribeTopics.otaUpdateTopic.has_value() ? subscribeTopics.otaUpdateTopic.value() : "";
+            this->featureFlagTopic = subscribeTopics.featureFlagTopic.has_value() ? subscribeTopics.featureFlagTopic.value() : "";
         }
     }
 
@@ -102,15 +112,54 @@ class DeviceService : public IDeviceService {
     Public StdString GetLogsTopic() const override { std::lock_guard<std::mutex> lock(mutex_); return logsTopic; }
     Public StdString GetEventsTopic() const override { std::lock_guard<std::mutex> lock(mutex_); return eventsTopic; }
 
-
-    Public Void SetEnrollmentCredentials(const MqttCredentials& enrollmentCredentials) override { 
-        connectionConfigRepository->UpdateEnrollmentCredentials(enrollmentCredentials);
+    Public Void SetEnrollmentCredentials(const MqttCredentialsDto& enrollmentCredentials) override { 
+        Val enrollmentCredentialsEntity = GetEnrollmentCredentialsEntity(enrollmentCredentials);
+        enrollmentCredentialsRepository->Update(enrollmentCredentialsEntity);
         Refresh();
     }
     
-    Public Void SetConnectionCredentials(const MqttCredentials& connectionCredentials) override { 
-        connectionConfigRepository->UpdateConnectionCredentials(connectionCredentials);
+    Public Void SetConnectionCredentials(const MqttCredentialsDto& connectionCredentials) override { 
+        Val connectionCredentialsEntity = GetConnectionCredentialsEntity(connectionCredentials);
+        connectionCredentialsRepository->Update(connectionCredentialsEntity);
         Refresh();
+    }
+
+    Private EnrollmentCredentials GetEnrollmentCredentialsEntity(const MqttCredentialsDto& enrollmentCredentials) {
+        EnrollmentCredentials enrollmentCredentialsEntity;
+        enrollmentCredentialsEntity.id = 1;
+        enrollmentCredentialsEntity.mqttEndpoint = enrollmentCredentials.mqttEndpoint.value();
+        enrollmentCredentialsEntity.caCertificatePem = enrollmentCredentials.caCertificatePem.value();
+        enrollmentCredentialsEntity.clientCertificatePem = enrollmentCredentials.clientCertificatePem.value();
+        enrollmentCredentialsEntity.clientPrivateKeyPem = enrollmentCredentials.clientPrivateKeyPem.value();
+        return enrollmentCredentialsEntity;
+    }
+
+    Private ConnectionCredentials GetConnectionCredentialsEntity(const MqttCredentialsDto& connectionCredentials) {
+        ConnectionCredentials connectionCredentialsEntity;
+        connectionCredentialsEntity.id = 1;
+        connectionCredentialsEntity.mqttEndpoint = connectionCredentials.mqttEndpoint.value();
+        connectionCredentialsEntity.caCertificatePem = connectionCredentials.caCertificatePem.value();
+        connectionCredentialsEntity.clientCertificatePem = connectionCredentials.clientCertificatePem.value();
+        connectionCredentialsEntity.clientPrivateKeyPem = connectionCredentials.clientPrivateKeyPem.value();
+        return connectionCredentialsEntity;
+    }
+
+    Private MqttCredentialsDto GetMqttCredentialsDto(const EnrollmentCredentials& enrollmentCredentials) {
+        MqttCredentialsDto enrollmentCredentialsDto;
+        enrollmentCredentialsDto.mqttEndpoint = enrollmentCredentials.mqttEndpoint;
+        enrollmentCredentialsDto.caCertificatePem = enrollmentCredentials.caCertificatePem;
+        enrollmentCredentialsDto.clientCertificatePem = enrollmentCredentials.clientCertificatePem;
+        enrollmentCredentialsDto.clientPrivateKeyPem = enrollmentCredentials.clientPrivateKeyPem;
+        return enrollmentCredentialsDto;
+    }
+
+    Private MqttCredentialsDto GetMqttCredentialsDto(const ConnectionCredentials& connectionCredentials) {
+        MqttCredentialsDto connectionCredentialsDto;
+        connectionCredentialsDto.mqttEndpoint = connectionCredentials.mqttEndpoint;
+        connectionCredentialsDto.caCertificatePem = connectionCredentials.caCertificatePem;
+        connectionCredentialsDto.clientCertificatePem = connectionCredentials.clientCertificatePem;
+        connectionCredentialsDto.clientPrivateKeyPem = connectionCredentials.clientPrivateKeyPem;
+        return connectionCredentialsDto;
     }
 };
 #endif // DEVICESERVICE_H

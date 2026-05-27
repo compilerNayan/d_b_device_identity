@@ -3,19 +3,18 @@
 
 #include <StandardDefines.h>
 
-/* @Serializable */
+/* @Entity */
 class PublishTopics {
 
-    /* @NotNull */
+    /* @Id */
+    Public optional<int> id;
+
     Public optional<StdString> statusTopic;
 
-    /* @NotNull */
     Public optional<StdString> telemetryTopic;
 
-    /* @NotNull */
     Public optional<StdString> logsTopic;
 
-    /* @NotNull */
     Public optional<StdString> eventsTopic;
 
 };
