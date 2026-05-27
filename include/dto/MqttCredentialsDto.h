@@ -19,3 +19,5 @@ class MqttCredentialsDto {
     Public optional<StdString> clientPrivateKeyPem;
 
 };
+
+#endif // MQTTCREDENTIALSDTO_H

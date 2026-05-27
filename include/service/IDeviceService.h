@@ -34,8 +34,8 @@ class IDeviceService {
 
     Public Virtual Void Refresh() = 0;
 
-    Public Virtual Void SetEnrollmentCredentials(const MqttCredentials& enrollmentCredentials) = 0;
-    Public Virtual Void SetConnectionCredentials(const MqttCredentials& connectionCredentials) = 0;
+    Public Virtual Void SetEnrollmentCredentials(const MqttCredentialsDto& enrollmentCredentials) = 0;
+    Public Virtual Void SetConnectionCredentials(const MqttCredentialsDto& connectionCredentials) = 0;
 };
 
 #endif // IDEVICESERVICE_H

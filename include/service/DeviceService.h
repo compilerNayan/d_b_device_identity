@@ -60,21 +60,21 @@ class DeviceService : public IDeviceService {
 
         if (enrollmentCredentialsOpt.has_value()) {
             Val enrollmentCredentials = enrollmentCredentialsOpt.value();
-            this->enrollmentCredentialsDto = GetMqttCredentialsDto(enrollmentCredentials);
+            this->enrollmentCredentials = GetMqttCredentialsDto(enrollmentCredentials);
         } else {
             MqttCredentialsDto enrollmentCredentialsDto;
             enrollmentCredentialsDto.mqttEndpoint = "";
             enrollmentCredentialsDto.caCertificatePem = "";
             enrollmentCredentialsDto.clientCertificatePem = "";
             enrollmentCredentialsDto.clientPrivateKeyPem = "";
-            this->enrollmentCredentialsDto = enrollmentCredentialsDto;
+            this->enrollmentCredentials = enrollmentCredentialsDto;
         }
 
         if(connectionCredentialsOpt.has_value()) {
             Val connectionCredentials = connectionCredentialsOpt.value();
-            this->connectionCredentialsDto = GetMqttCredentialsDto(connectionCredentials);
+            this->connectionCredentials = GetMqttCredentialsDto(connectionCredentials);
         } else {
-            this->connectionCredentialsDto = nullopt;
+            this->connectionCredentials = std::nullopt;
         }
 
         if (publishTopicsOpt.has_value()) {
@@ -97,10 +97,9 @@ class DeviceService : public IDeviceService {
     Public StdString GetSerialNumber() const override { std::lock_guard<std::mutex> lock(mutex_); return serialNumber; }
     Public StdString GetDeviceSecret() const override { std::lock_guard<std::mutex> lock(mutex_); return deviceSecret; }
     Public StdString GetFirmwareVersion() const override { std::lock_guard<std::mutex> lock(mutex_); return firmwareVersion; }
-    Public StdString GetMqttEndpoint() const override { std::lock_guard<std::mutex> lock(mutex_); return mqttEndpoint; }
 
-    Public MqttCredentials GetEnrollmentCredentials() const override { std::lock_guard<std::mutex> lock(mutex_); return enrollmentCredentials; }
-    Public Optional<MqttCredentials> GetConnectionCredentials() const override { std::lock_guard<std::mutex> lock(mutex_); return connectionCredentials; }
+    Public MqttCredentialsDto GetEnrollmentCredentials() const override { std::lock_guard<std::mutex> lock(mutex_); return enrollmentCredentials; }
+    Public Optional<MqttCredentialsDto> GetConnectionCredentials() const override { std::lock_guard<std::mutex> lock(mutex_); return connectionCredentials; }
 
     Public StdSet<StdString> GetSubscribeTopics() const override { std::lock_guard<std::mutex> lock(mutex_); return subscribeTopics; }
     Public StdString GetCommandTopic() const override { std::lock_guard<std::mutex> lock(mutex_); return commandTopic; }
@@ -113,14 +112,12 @@ class DeviceService : public IDeviceService {
     Public StdString GetEventsTopic() const override { std::lock_guard<std::mutex> lock(mutex_); return eventsTopic; }
 
     Public Void SetEnrollmentCredentials(const MqttCredentialsDto& enrollmentCredentials) override { 
-        Val enrollmentCredentialsEntity = GetEnrollmentCredentialsEntity(enrollmentCredentials);
-        enrollmentCredentialsRepository->Update(enrollmentCredentialsEntity);
+        enrollmentCredentialsRepository->Update(GetEnrollmentCredentialsEntity(enrollmentCredentials));
         Refresh();
     }
     
     Public Void SetConnectionCredentials(const MqttCredentialsDto& connectionCredentials) override { 
-        Val connectionCredentialsEntity = GetConnectionCredentialsEntity(connectionCredentials);
-        connectionCredentialsRepository->Update(connectionCredentialsEntity);
+        connectionCredentialsRepository->Update(GetConnectionCredentialsEntity(connectionCredentials));
         Refresh();
     }
 
