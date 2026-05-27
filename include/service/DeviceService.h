@@ -112,12 +112,14 @@ class DeviceService : public IDeviceService {
     Public StdString GetEventsTopic() const override { std::lock_guard<std::mutex> lock(mutex_); return eventsTopic; }
 
     Public Void SetEnrollmentCredentials(const MqttCredentialsDto& enrollmentCredentials) override { 
-        enrollmentCredentialsRepository->Update(GetEnrollmentCredentialsEntity(enrollmentCredentials));
+        Var enrollmentCredentialsEntity = GetEnrollmentCredentialsEntity(enrollmentCredentials);
+        enrollmentCredentialsRepository->Update(enrollmentCredentialsEntity);
         Refresh();
     }
     
     Public Void SetConnectionCredentials(const MqttCredentialsDto& connectionCredentials) override { 
-        connectionCredentialsRepository->Update(GetConnectionCredentialsEntity(connectionCredentials));
+        Var connectionCredentialsEntity = GetConnectionCredentialsEntity(connectionCredentials);
+        connectionCredentialsRepository->Update(connectionCredentialsEntity);
         Refresh();
     }
 
