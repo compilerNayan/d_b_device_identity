@@ -2,7 +2,7 @@
 #define DEVICESERVICE_H
 
 #include "IDeviceService.h"
-#include "../repository/EnrollmentCredentialsRepository.h"
+#include "../repository/FleetProvisioningProfileRepository.h"
 #include "../repository/DeviceIdentityProfileRepository.h"
 
 /* @Service */
@@ -29,9 +29,7 @@ class DeviceService : public IDeviceService {
 
     Public Void Refresh() override {
         Val fleetProvisioningProfileOpt = fleetProvisioningProfileRepository->FindFirst();
-        Val connectionCredentialsOpt = connectionCredentialsRepository->FindFirst();
-        Val publishTopicsOpt = publishTopicsRepository->FindFirst();
-        Val subscribeTopicsOpt = subscribeTopicsRepository->FindFirst();
+        Val deviceIdentityProfileOpt = deviceIdentityProfileRepository->FindFirst();
 
         std::lock_guard<std::mutex> lock(mutex_);
         serialNumber = "1234";

@@ -8,6 +8,6 @@ class PublishTopicsData {
     Public StdString telemetryTopic;
     Public StdString logsTopic;
     Public StdString eventsTopic;
-}
+};
 
 #endif // PUBLISHTOPICS_DATA_H

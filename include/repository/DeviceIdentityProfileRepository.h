@@ -10,7 +10,7 @@ DefineStandardPointers(DeviceIdentityProfileRepository)
 class DeviceIdentityProfileRepository : public CpaRepository<DeviceIdentityProfile, int> {
     Public Virtual ~DeviceIdentityProfileRepository() = default;
 
-    Public DeviceIdentityProfile UpdateAvailableFields(DeviceIdentityProfile& deviceIdentityProfile) override {
+    Public DeviceIdentityProfile UpdateAvailableFields(DeviceIdentityProfile& deviceIdentityProfile) {
         Var existingEntity = FindFirst();
         if(existingEntity.has_value()) {
             if(deviceIdentityProfile.mqttEndpoint.has_value()) existingEntity.value().mqttEndpoint = deviceIdentityProfile.mqttEndpoint.value();

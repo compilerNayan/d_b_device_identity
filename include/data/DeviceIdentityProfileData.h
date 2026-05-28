@@ -12,6 +12,6 @@ class DeviceIdentityProfileData {
     Public StdString clientPrivateKeyPem;
     Public PublishTopicsData publishTopics;
     Public SubscribeTopicsData subscribeTopics;
-}
+};
 
 #endif // DEVICEIDENTITYPROFILEDATA_H

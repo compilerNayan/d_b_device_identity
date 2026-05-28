@@ -10,7 +10,7 @@ DefineStandardPointers(FleetProvisioningProfileRepository)
 class FleetProvisioningProfileRepository : public CpaRepository<FleetProvisioningProfile, int> {
     Public Virtual ~FleetProvisioningProfileRepository() = default;
 
-    Public FleetProvisioningProfile UpdateAvailableFields(FleetProvisioningProfile& fleetProvisioningProfile) override {
+    Public FleetProvisioningProfile UpdateAvailableFields(FleetProvisioningProfile& fleetProvisioningProfile) {
         Var existingEntity = FindFirst();
         if(existingEntity.has_value()) {
             if(fleetProvisioningProfile.mqttEndpoint.has_value()) existingEntity.value().mqttEndpoint = fleetProvisioningProfile.mqttEndpoint.value();

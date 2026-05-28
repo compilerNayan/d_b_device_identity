@@ -3,8 +3,11 @@
 
 #include <StandardDefines.h>
 
-#include "../dto/MqttCredentialsDto.h"
 #include "../data/FleetProvisioningProfileData.h"
+#include "../data/DeviceIdentityProfileData.h"
+#include "../dto/FleetProvisioningProfileDto.h"
+#include "../dto/DeviceIdentityProfileDto.h"
+
 
 DefineStandardPointers(IDeviceService)
 class IDeviceService {

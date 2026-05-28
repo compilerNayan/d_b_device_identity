@@ -21,7 +21,7 @@ class FleetProvisioningProfileData {
     Public StdString provisionRequestTopic;
 
     Public StdString provisionAcceptedTopic;
-}
+};
 
 
 #endif // FLEETPROVISIONINGPROFILEDATA_H
