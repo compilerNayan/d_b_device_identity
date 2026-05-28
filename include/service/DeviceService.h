@@ -61,51 +61,36 @@ class DeviceService : public IDeviceService {
 
         if(deviceIdentityProfileOpt.has_value()) {
             Val deviceIdentityProfileEntity = deviceIdentityProfileOpt.value();
-            this->deviceIdentityProfile.mqttEndpoint = deviceIdentityProfileEntity.mqttEndpoint.has_value() ? deviceIdentityProfileEntity.mqttEndpoint.value() : "";
-            this->deviceIdentityProfile.caCertificatePem = deviceIdentityProfileEntity.caCertificatePem.has_value() ? deviceIdentityProfileEntity.caCertificatePem.value() : "";
-            this->deviceIdentityProfile.clientCertificatePem = deviceIdentityProfileEntity.clientCertificatePem.has_value() ? deviceIdentityProfileEntity.clientCertificatePem.value() : "";
-            this->deviceIdentityProfile.clientPrivateKeyPem = deviceIdentityProfileEntity.clientPrivateKeyPem.has_value() ? deviceIdentityProfileEntity.clientPrivateKeyPem.value() : "";
+            this->deviceIdentityProfile->mqttEndpoint = deviceIdentityProfileEntity.mqttEndpoint.has_value() ? deviceIdentityProfileEntity.mqttEndpoint.value() : "";
+            this->deviceIdentityProfile->caCertificatePem = deviceIdentityProfileEntity.caCertificatePem.has_value() ? deviceIdentityProfileEntity.caCertificatePem.value() : "";
+            this->deviceIdentityProfile->clientCertificatePem = deviceIdentityProfileEntity.clientCertificatePem.has_value() ? deviceIdentityProfileEntity.clientCertificatePem.value() : "";
+            this->deviceIdentityProfile->clientPrivateKeyPem = deviceIdentityProfileEntity.clientPrivateKeyPem.has_value() ? deviceIdentityProfileEntity.clientPrivateKeyPem.value() : "";
             
-            this->deviceIdentityProfile.publishTopics.statusTopic = "";
-            this->deviceIdentityProfile.publishTopics.telemetryTopic = "";
-            this->deviceIdentityProfile.publishTopics.logsTopic = "";
-            this->deviceIdentityProfile.publishTopics.eventsTopic = "";
+            this->deviceIdentityProfile->publishTopics.statusTopic = "";
+            this->deviceIdentityProfile->publishTopics.telemetryTopic = "";
+            this->deviceIdentityProfile->publishTopics.logsTopic = "";
+            this->deviceIdentityProfile->publishTopics.eventsTopic = "";
 
             if(deviceIdentityProfileEntity.publishTopics.has_value()) {
                 Val publishTopicsEntity = deviceIdentityProfileEntity.publishTopics.value();
-                if(publishTopicsEntity.statusTopic.has_value()) this->deviceIdentityProfile.publishTopics.statusTopic = publishTopicsEntity.statusTopic.value();
-                if(publishTopicsEntity.telemetryTopic.has_value()) this->deviceIdentityProfile.publishTopics.telemetryTopic = publishTopicsEntity.telemetryTopic.value();
-                if(publishTopicsEntity.logsTopic.has_value()) this->deviceIdentityProfile.publishTopics.logsTopic = publishTopicsEntity.logsTopic.value();
-                if(publishTopicsEntity.eventsTopic.has_value()) this->deviceIdentityProfile.publishTopics.eventsTopic = publishTopicsEntity.eventsTopic.value();
+                if(publishTopicsEntity.statusTopic.has_value()) this->deviceIdentityProfile->publishTopics.statusTopic = publishTopicsEntity.statusTopic.value();
+                if(publishTopicsEntity.telemetryTopic.has_value()) this->deviceIdentityProfile->publishTopics.telemetryTopic = publishTopicsEntity.telemetryTopic.value();
+                if(publishTopicsEntity.logsTopic.has_value()) this->deviceIdentityProfile->publishTopics.logsTopic = publishTopicsEntity.logsTopic.value();
+                if(publishTopicsEntity.eventsTopic.has_value()) this->deviceIdentityProfile->publishTopics.eventsTopic = publishTopicsEntity.eventsTopic.value();
             }
 
-            this->deviceIdentityProfile.subscribeTopics.commandTopic = "";
-            this->deviceIdentityProfile.subscribeTopics.otaUpdateTopic = "";
-            this->deviceIdentityProfile.subscribeTopics.featureFlagTopic = "";
+            this->deviceIdentityProfile->subscribeTopics.commandTopic = "";
+            this->deviceIdentityProfile->subscribeTopics.otaUpdateTopic = "";
+            this->deviceIdentityProfile->subscribeTopics.featureFlagTopic = "";
 
             if(deviceIdentityProfileEntity.subscribeTopics.has_value()) {
                 Val subscribeTopicsEntity = deviceIdentityProfileEntity.subscribeTopics.value();
-                if(subscribeTopicsEntity.commandTopic.has_value()) this->deviceIdentityProfile.subscribeTopics.commandTopic = subscribeTopicsEntity.commandTopic.value();
-                if(subscribeTopicsEntity.otaUpdateTopic.has_value()) this->deviceIdentityProfile.subscribeTopics.otaUpdateTopic = subscribeTopicsEntity.otaUpdateTopic.value();
-                if(subscribeTopicsEntity.featureFlagTopic.has_value()) this->deviceIdentityProfile.subscribeTopics.featureFlagTopic = subscribeTopicsEntity.featureFlagTopic.value();
+                if(subscribeTopicsEntity.commandTopic.has_value()) this->deviceIdentityProfile->subscribeTopics.commandTopic = subscribeTopicsEntity.commandTopic.value();
+                if(subscribeTopicsEntity.otaUpdateTopic.has_value()) this->deviceIdentityProfile->subscribeTopics.otaUpdateTopic = subscribeTopicsEntity.otaUpdateTopic.value();
+                if(subscribeTopicsEntity.featureFlagTopic.has_value()) this->deviceIdentityProfile->subscribeTopics.featureFlagTopic = subscribeTopicsEntity.featureFlagTopic.value();
             }
         } else {
             this->deviceIdentityProfile = std::nullopt;
-        }
-
-        if (publishTopicsOpt.has_value()) {
-            Val publishTopics = publishTopicsOpt.value();
-            this->statusTopic = publishTopics.statusTopic.has_value() ? publishTopics.statusTopic.value() : "";
-            this->telemetryTopic = publishTopics.telemetryTopic.has_value() ? publishTopics.telemetryTopic.value() : "";
-            this->logsTopic = publishTopics.logsTopic.has_value() ? publishTopics.logsTopic.value() : "";
-            this->eventsTopic = publishTopics.eventsTopic.has_value() ? publishTopics.eventsTopic.value() : "";
-        }
-
-        if (subscribeTopicsOpt.has_value()) {
-            Val subscribeTopics = subscribeTopicsOpt.value();
-            this->commandTopic = subscribeTopics.commandTopic.has_value() ? subscribeTopics.commandTopic.value() : "";
-            this->otaUpdateTopic = subscribeTopics.otaUpdateTopic.has_value() ? subscribeTopics.otaUpdateTopic.value() : "";
-            this->featureFlagTopic = subscribeTopics.featureFlagTopic.has_value() ? subscribeTopics.featureFlagTopic.value() : "";
         }
     }
 
@@ -119,7 +104,7 @@ class DeviceService : public IDeviceService {
 
     Public Void SetFleetProvisioningProfile(const FleetProvisioningProfileDto& fleetProvisioningProfileDto) override { 
         Var fleetProvisioningProfileEntity = GetFleetProvisioningProfileEntity(fleetProvisioningProfileDto);
-        fleetProvisioningProfileRepository->UpdateAvailableFields(fleetProvisioningProfileDto);
+        fleetProvisioningProfileRepository->UpdateAvailableFields(fleetProvisioningProfileEntity);
         Refresh();
     }
     
@@ -141,24 +126,31 @@ class DeviceService : public IDeviceService {
         fleetProvisioningProfileEntity.createKeysRejectedTopic = fleetProvisioningProfileDto.createKeysRejectedTopic.value();
         fleetProvisioningProfileEntity.provisionRequestTopic = fleetProvisioningProfileDto.provisionRequestTopic.value();
         fleetProvisioningProfileEntity.provisionAcceptedTopic = fleetProvisioningProfileDto.provisionAcceptedTopic.value();
-        fleetProvisioningProfileEntity.provisionRejectedTopic = fleetProvisioningProfileDto.provisionRejectedTopic.value();
+        //fleetProvisioningProfileEntity.provisionRejectedTopic = fleetProvisioningProfileDto.provisionRejectedTopic.value();
         return fleetProvisioningProfileEntity;
     }
 
     Private DeviceIdentityProfile GetDeviceIdentityProfileEntity(const DeviceIdentityProfileDto& deviceIdentityProfileDto) {
         DeviceIdentityProfile deviceIdentityProfileEntity;
         deviceIdentityProfileEntity.id = 1;
-        deviceIdentityProfileEntity.mqttEndpoint = deviceIdentityProfileDto.mqttEndpoint.value();
-        deviceIdentityProfileEntity.caCertificatePem = deviceIdentityProfileDto.caCertificatePem.value();
-        deviceIdentityProfileEntity.clientCertificatePem = deviceIdentityProfileDto.clientCertificatePem.value();
-        deviceIdentityProfileEntity.clientPrivateKeyPem = deviceIdentityProfileDto.clientPrivateKeyPem.value();
-        deviceIdentityProfileEntity.publishTopics.statusTopic = deviceIdentityProfileDto.publishTopics.statusTopic.value();
-        deviceIdentityProfileEntity.publishTopics.telemetryTopic = deviceIdentityProfileDto.publishTopics.telemetryTopic.value();
-        deviceIdentityProfileEntity.publishTopics.logsTopic = deviceIdentityProfileDto.publishTopics.logsTopic.value();
-        deviceIdentityProfileEntity.publishTopics.eventsTopic = deviceIdentityProfileDto.publishTopics.eventsTopic.value();
-        deviceIdentityProfileEntity.subscribeTopics.commandTopic = deviceIdentityProfileDto.subscribeTopics.commandTopic.value();
-        deviceIdentityProfileEntity.subscribeTopics.otaUpdateTopic = deviceIdentityProfileDto.subscribeTopics.otaUpdateTopic.value();
-        deviceIdentityProfileEntity.subscribeTopics.featureFlagTopic = deviceIdentityProfileDto.subscribeTopics.featureFlagTopic.value();
+        deviceIdentityProfileEntity.mqttEndpoint = deviceIdentityProfileDto.mqttEndpoint;
+        deviceIdentityProfileEntity.caCertificatePem = deviceIdentityProfileDto.caCertificatePem;
+        deviceIdentityProfileEntity.clientCertificatePem = deviceIdentityProfileDto.clientCertificatePem;
+        deviceIdentityProfileEntity.clientPrivateKeyPem = deviceIdentityProfileDto.clientPrivateKeyPem;
+        
+        PublishTopics publishTopicsEntity;
+        publishTopicsEntity.statusTopic = deviceIdentityProfileDto.publishTopics->statusTopic;
+        publishTopicsEntity.telemetryTopic = deviceIdentityProfileDto.publishTopics->telemetryTopic;
+        publishTopicsEntity.logsTopic = deviceIdentityProfileDto.publishTopics->logsTopic;
+        publishTopicsEntity.eventsTopic = deviceIdentityProfileDto.publishTopics->eventsTopic;
+        deviceIdentityProfileEntity.publishTopics = publishTopicsEntity;
+        
+        SubscribeTopics subscribeTopicsEntity;
+        subscribeTopicsEntity.commandTopic = deviceIdentityProfileDto.subscribeTopics->commandTopic;
+        subscribeTopicsEntity.otaUpdateTopic = deviceIdentityProfileDto.subscribeTopics->otaUpdateTopic;
+        subscribeTopicsEntity.featureFlagTopic = deviceIdentityProfileDto.subscribeTopics->featureFlagTopic;
+        deviceIdentityProfileEntity.subscribeTopics = subscribeTopicsEntity;
+
         return deviceIdentityProfileEntity;
     }
 };
