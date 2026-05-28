@@ -11,26 +11,30 @@
 #include <sys/time.h>
 #include <mutex>
 
-
-
 #include "StandardDefines.h"
 #include "../service/IDeviceService.h"
 #include "logger/ILogger.h"
 
-#include "EnrollmentStatus.h"
+#include "IFleetProvisioningService.h"
 
-
-
-class FleetProvisioningService {
+/* @Component */
+class FleetProvisioningService : public IFleetProvisioningService {
+    
     Public FleetProvisioningService()
         : mqttClient(nullptr),
           mqttStarted(false),
           enrollmentStarted(false),
           pendingSubscriptions(0),
-          status(EnrollmentStatus::NotStarted) {}
+          status(EnrollmentStatus::NotStarted) {
+            fpProfile = deviceService->GetFleetProvisioningProfile();
+    }
 
-    Public Void EnrollDevice() {
-        if(deviceService->GetDeviceIdentityProfile().has_value()) {
+    Public Bool IsEnrolled() override {
+        return deviceService->GetDeviceIdentityProfile().has_value();
+    }
+
+    Public Void EnrollDevice() override {
+        if(IsEnrolled()) {
             logger->Info(Tag::Untagged, "Device already enrolled");
             std::lock_guard<std::mutex> lock(mutex_);
             status = EnrollmentStatus::AlreadyEnrolled;
@@ -46,15 +50,16 @@ class FleetProvisioningService {
             status = EnrollmentStatus::InProgress;
         }
 
+        fpProfile = deviceService->GetFleetProvisioningProfile();
         StartMqttClient();
     }
 
-    Public EnrollmentStatus GetEnrollmentStatus() {
+    Public EnrollmentStatus GetEnrollmentStatus() override {
         std::lock_guard<std::mutex> lock(mutex_);
         return status;
     }
 
-    Public EnrollmentStatus WaitForEnrollment(Int timeoutMs) {
+    Public EnrollmentStatus WaitForEnrollment(Int timeoutMs) override {
         Const Int step = 200;
         Int waited = 0;
         while (waited < timeoutMs) {
@@ -71,26 +76,7 @@ class FleetProvisioningService {
         return GetEnrollmentStatus();
     }
 
-    Public Void SaveReceivedCredentials() {
-        std::lock_guard<std::mutex> lock(mutex_);
-
-        DeviceIdentityProfileDto identityDto;
-        identityDto.caCertificatePem   = Optional<StdString>(awsCaCertificatePem);
-        identityDto.clientCertificatePem = Optional<StdString>(awsDeviceCertPem);
-        identityDto.clientPrivateKeyPem  = Optional<StdString>(devicePrivateKeyPem);
-
-        deviceService->SetDeviceIdentityProfile(identityDto);
-
-        status = EnrollmentStatus::Success;
-
-        logger->Info(Tag::Untagged,
-                     "Saved device identity profile for serial=" +
-                     deviceService->GetSerialNumber());
-
-        CloseConnection();
-    }
-
-    Public Void CloseConnection() {
+    Public Void CloseConnection() override {
         std::lock_guard<std::mutex> lock(mutex_);
         if (mqttClient) {
             logger->Info(Tag::Untagged, "Closing MQTT connection...");
@@ -106,6 +92,9 @@ class FleetProvisioningService {
 
     /* @Autowired */
     Private ILoggerPtr logger;
+
+    FleetProvisioningProfileData fpProfile;
+
 
     Private esp_mqtt_client_handle_t mqttClient;
     Private Bool mqttStarted;
@@ -126,8 +115,6 @@ class FleetProvisioningService {
         enrollmentStarted = false;
         pendingSubscriptions = 0;
 
-        FleetProvisioningProfileData fpProfile = deviceService->GetFleetProvisioningProfile();
-
         esp_mqtt_client_config_t mqtt_cfg = {};
         mqtt_cfg.broker.address.uri = fpProfile.mqttEndpoint.c_str();
         mqtt_cfg.broker.verification.certificate = fpProfile.caCertificatePem.c_str();
@@ -145,7 +132,6 @@ class FleetProvisioningService {
     }
 
     Private Void SubscribeEnrollmentTopics() {
-        FleetProvisioningProfileData fpProfile = deviceService->GetFleetProvisioningProfile();
         pendingSubscriptions = 4;
         esp_mqtt_client_subscribe(mqttClient, fpProfile.createKeysAcceptedTopic.c_str(), 1);
         esp_mqtt_client_subscribe(mqttClient, fpProfile.createKeysRejectedTopic.c_str(), 1);
@@ -155,7 +141,6 @@ class FleetProvisioningService {
     }
 
     Private Void PublishCreateKeysAndCertificate() {
-        FleetProvisioningProfileData fpProfile = deviceService->GetFleetProvisioningProfile();
         logger->Info(Tag::Untagged, "Publishing CreateKeysAndCertificate...");
         esp_mqtt_client_publish(mqttClient, fpProfile.createKeysRequestTopic.c_str(), "{}", 2, 1, 0);
     }
@@ -168,7 +153,6 @@ class FleetProvisioningService {
     }
 
     Private Void PublishProvisionRequest() {
-        FleetProvisioningProfileData fpProfile = deviceService->GetFleetProvisioningProfile();
         StdString json = "{\"certificateOwnershipToken\":\"" + ownershipToken +
                          "\",\"parameters\":{\"SerialNumber\":\"" +
                          deviceService->GetSerialNumber() + "\"}}";
@@ -183,6 +167,25 @@ class FleetProvisioningService {
         logger->Info(Tag::Untagged, "========== ENROLLMENT SUCCESS ==========");
         logger->Info(Tag::Untagged, "SerialNumber: " + deviceService->GetSerialNumber());
         SaveReceivedCredentials();
+    }
+
+    Private Void SaveReceivedCredentials() {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        DeviceIdentityProfileDto identityDto;
+        identityDto.caCertificatePem   = Optional<StdString>(awsCaCertificatePem);
+        identityDto.clientCertificatePem = Optional<StdString>(awsDeviceCertPem);
+        identityDto.clientPrivateKeyPem  = Optional<StdString>(devicePrivateKeyPem);
+
+        deviceService->SetDeviceIdentityProfile(identityDto);
+
+        status = EnrollmentStatus::Success;
+
+        logger->Info(Tag::Untagged,
+                     "Saved device identity profile for serial=" +
+                     deviceService->GetSerialNumber());
+
+        CloseConnection();
     }
 
     Private Static Void MqttEventHandler(Void* handler_args, esp_event_base_t base,
@@ -204,14 +207,13 @@ class FleetProvisioningService {
                 break;
 
             case MQTT_EVENT_DATA: {
-                FleetProvisioningProfileData fpProfile = self->deviceService->GetFleetProvisioningProfile();
                 StdString topic(event->topic, event->topic_len);
 
-                if (topic == fpProfile.createKeysAcceptedTopic) {
+                if (topic == self->fpProfile.createKeysAcceptedTopic) {
                     self->HandleCreateKeysAccepted(event->data, event->data_len);
-                } else if (topic == fpProfile.provisionAcceptedTopic) {
+                } else if (topic == self->fpProfile.provisionAcceptedTopic) {
                     self->HandleProvisionAccepted(event->data, event->data_len);
-                } else if (topic == fpProfile.provisionRejectedTopic) {
+                } else if (topic == self->fpProfile.provisionRejectedTopic) {
                     std::lock_guard<std::mutex> lock(self->mutex_);
                     self->status = EnrollmentStatus::Failed_Provision;
                     self->logger->Error(Tag::Untagged, "Provisioning rejected");
