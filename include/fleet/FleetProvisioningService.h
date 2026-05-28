@@ -108,6 +108,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private StdString awsDeviceCertPem;
     Private StdString awsCaCertificatePem;
     Private StdString ownershipToken;
+    Private StdString thingName;
 
     Private Void StartMqttClient() {
         if (mqttStarted) return;
@@ -148,7 +149,48 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private Void HandleCreateKeysAccepted(CChar* payload, Int len) {
         std::lock_guard<std::mutex> lock(mutex_);
         logger->Info(Tag::Untagged, "CreateKeysAndCertificate ACCEPTED");
-        // TODO: parse payload and fill devicePrivateKeyPem, awsDeviceCertPem, ownershipToken
+    
+        // Copy payload into a buffer
+        StdString payloadStr(payload, len);
+    
+        // Extract fields (using same helpers as in your C code)
+        Char ownershipBuf[768];
+        Char certIdBuf[128];
+        Char keyEsc[4096];
+        Char certEsc[4096];
+    
+        if (!json_extract_string(payloadStr.c_str(), "certificateOwnershipToken", ownershipBuf, sizeof(ownershipBuf))) {
+            logger->Error(Tag::Untagged, "Missing certificateOwnershipToken");
+            return;
+        }
+        if (!json_extract_string(payloadStr.c_str(), "certificateId", certIdBuf, sizeof(certIdBuf))) {
+            logger->Error(Tag::Untagged, "Missing certificateId");
+            return;
+        }
+        if (!json_extract_string(payloadStr.c_str(), "privateKey", keyEsc, sizeof(keyEsc))) {
+            logger->Error(Tag::Untagged, "Missing privateKey");
+            return;
+        }
+        if (!json_extract_string(payloadStr.c_str(), "certificatePem", certEsc, sizeof(certEsc))) {
+            logger->Error(Tag::Untagged, "Missing certificatePem");
+            return;
+        }
+    
+        // Unescape JSON strings into PEM format
+        Char keyPem[4096];
+        Char certPem[4096];
+        unescape_json_to_pem(keyEsc, keyPem, sizeof(keyPem));
+        unescape_json_to_pem(certEsc, certPem, sizeof(certPem));
+    
+        // Save into class members
+        ownershipToken     = ownershipBuf;
+        devicePrivateKeyPem = keyPem;
+        awsDeviceCertPem    = certPem;
+    
+        logger->Info(Tag::Untagged, "certificateId: " + StdString(certIdBuf));
+        logger->Info(Tag::Untagged, "certificateOwnershipToken: " + ownershipToken);
+    
+        // Continue with RegisterThing
         PublishProvisionRequest();
     }
 
@@ -164,11 +206,23 @@ class FleetProvisioningService : public IFleetProvisioningService {
 
     Private Void HandleProvisionAccepted(CChar* payload, Int len) {
         std::lock_guard<std::mutex> lock(mutex_);
+    
+        StdString payloadStr(payload, len);
+    
+        Char thingNameBuf[128];
+        if (!json_extract_string(payloadStr.c_str(), "thingName", thingNameBuf, sizeof(thingNameBuf))) {
+            logger->Error(Tag::Untagged, "Missing thingName in provision response");
+            return;
+        }
+    
         logger->Info(Tag::Untagged, "========== ENROLLMENT SUCCESS ==========");
+        logger->Info(Tag::Untagged, "thingName: " + StdString(thingNameBuf));
         logger->Info(Tag::Untagged, "SerialNumber: " + deviceService->GetSerialNumber());
+    
+        // At this point, devicePrivateKeyPem and awsDeviceCertPem are already populated
         SaveReceivedCredentials();
     }
-
+    
     Private Void SaveReceivedCredentials() {
         std::lock_guard<std::mutex> lock(mutex_);
 
