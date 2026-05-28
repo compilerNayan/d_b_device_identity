@@ -1,10 +1,12 @@
-#ifndef CONNECTIONCREDENTIALS_H
-#define CONNECTIONCREDENTIALS_H
+#ifndef DEVICEIDENTITYPROFILE_H
+#define DEVICEIDENTITYPROFILE_H
 
 #include <StandardDefines.h>
+#include "../type/PublishTopics.h"
+#include "../type/SubscribeTopics.h"
 
 /* @Entity */
-class ConnectionCredentials {
+class DeviceIdentityProfile {
 
     /* @Id */
     /* @NotNull */
@@ -22,6 +24,10 @@ class ConnectionCredentials {
     /* @NotNull */
     Public optional<StdString> clientPrivateKeyPem;
 
+    Public optional<PublishTopics> publishTopics;
+
+    Public optional<SubscribeTopics> subscribeTopics;
+
 };
 
-#endif // CONNECTIONCREDENTIALS_H
+#endif // DEVICEIDENTITYPROFILE_H

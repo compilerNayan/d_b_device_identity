@@ -3,11 +3,8 @@
 
 #include <StandardDefines.h>
 
-/* @Entity */
+/* @Serializable */
 class SubscribeTopics {
-
-    /* @Id */
-    Public optional<int> id;
 
     Public optional<StdString> commandTopic;
 

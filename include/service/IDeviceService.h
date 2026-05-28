@@ -4,6 +4,7 @@
 #include <StandardDefines.h>
 
 #include "../dto/MqttCredentialsDto.h"
+#include "../data/FleetProvisioningProfileData.h"
 
 DefineStandardPointers(IDeviceService)
 class IDeviceService {
@@ -13,29 +14,15 @@ class IDeviceService {
     Public Virtual StdString GetDeviceSecret() const = 0;
     Public Virtual StdString GetFirmwareVersion() const = 0;
 
-    // Enrollment credentials
-    Public Virtual MqttCredentialsDto GetEnrollmentCredentials() const = 0;
+    Public Virtual FleetProvisioningProfileData GetFleetProvisioningProfile() const = 0;
 
     // Connection credentials
-    Public Virtual Optional<MqttCredentialsDto> GetConnectionCredentials() const = 0;
+    Public Virtual Optional<DeviceIdentityProfileData> GetDeviceIdentityProfile() const = 0;
 
-    Public Virtual StdSet<StdString> GetSubscribeTopics() const = 0;
-    
-    // Subscribe topics
-    Public Virtual StdString GetCommandTopic() const = 0;
-    Public Virtual StdString GetOtaUpdateTopic() const = 0;
-    Public Virtual StdString GetFeatureFlagTopic() const = 0;
-
-    // Publish topics
-    Public Virtual StdString GetStatusTopic() const = 0;
-    Public Virtual StdString GetTelemetryTopic() const = 0;
-    Public Virtual StdString GetLogsTopic() const = 0;
-    Public Virtual StdString GetEventsTopic() const = 0;
+    Public Virtual Void SetFleetProvisioningProfile(const FleetProvisioningProfileDto& fleetProvisioningProfileDto) = 0;
+    Public Virtual Void SetDeviceIdentityProfile(const DeviceIdentityProfileDto& deviceIdentityProfileDto) = 0;
 
     Public Virtual Void Refresh() = 0;
-
-    Public Virtual Void SetEnrollmentCredentials(const MqttCredentialsDto& enrollmentCredentials) = 0;
-    Public Virtual Void SetConnectionCredentials(const MqttCredentialsDto& connectionCredentials) = 0;
 };
 
 #endif // IDEVICESERVICE_H

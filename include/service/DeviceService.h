@@ -3,9 +3,7 @@
 
 #include "IDeviceService.h"
 #include "../repository/EnrollmentCredentialsRepository.h"
-#include "../repository/ConnectionCredentialsRepository.h"
-#include "../repository/PublishTopicsRepository.h"
-#include "../repository/SubscribeTopicsRepository.h"
+#include "../repository/DeviceIdentityProfileRepository.h"
 
 /* @Service */
 class DeviceService : public IDeviceService {
@@ -15,39 +13,22 @@ class DeviceService : public IDeviceService {
     Public Virtual ~DeviceService() = default;
 
     /* @Autowired */
-    Private EnrollmentCredentialsRepositoryPtr enrollmentCredentialsRepository;
+    Private FleetProvisioningProfileRepositoryPtr fleetProvisioningProfileRepository;
 
     /* @Autowired */
-    Private ConnectionCredentialsRepositoryPtr connectionCredentialsRepository;
-
-    /* @Autowired */
-    Private PublishTopicsRepositoryPtr publishTopicsRepository;
-
-    /* @Autowired */
-    Private SubscribeTopicsRepositoryPtr subscribeTopicsRepository;
+    Private DeviceIdentityProfileRepositoryPtr deviceIdentityProfileRepository;
 
     Private StdString serialNumber;
     Private StdString deviceSecret;
     Private StdString firmwareVersion;
 
-    Private MqttCredentialsDto enrollmentCredentials;
-    Private Optional<MqttCredentialsDto> connectionCredentials;
-
-    Private StdSet<StdString> subscribeTopics;
-    Private StdString commandTopic;
-    Private StdString otaUpdateTopic;
-    Private StdString featureFlagTopic;
-
-    Private StdSet<StdString> publishTopics;
-    Private StdString statusTopic;
-    Private StdString telemetryTopic;
-    Private StdString logsTopic;
-    Private StdString eventsTopic;
+    Private FleetProvisioningProfileData fleetProvisioningProfile;
+    Private Optional<DeviceIdentityProfileData> deviceIdentityProfile;
 
     Private mutable std::mutex mutex_;
 
     Public Void Refresh() override {
-        Val enrollmentCredentialsOpt = enrollmentCredentialsRepository->FindFirst();
+        Val fleetProvisioningProfileOpt = fleetProvisioningProfileRepository->FindFirst();
         Val connectionCredentialsOpt = connectionCredentialsRepository->FindFirst();
         Val publishTopicsOpt = publishTopicsRepository->FindFirst();
         Val subscribeTopicsOpt = subscribeTopicsRepository->FindFirst();
@@ -57,24 +38,61 @@ class DeviceService : public IDeviceService {
         deviceSecret = "1234";
         firmwareVersion = "1.0.0";
 
-
-        if (enrollmentCredentialsOpt.has_value()) {
-            Val enrollmentCredentials = enrollmentCredentialsOpt.value();
-            this->enrollmentCredentials = GetMqttCredentialsDto(enrollmentCredentials);
+        if (fleetProvisioningProfileOpt.has_value()) {
+            Val fleetProvisioningProfileEntity = fleetProvisioningProfileOpt.value();
+            this->fleetProvisioningProfile.mqttEndpoint = fleetProvisioningProfileEntity.mqttEndpoint.has_value() ? fleetProvisioningProfileEntity.mqttEndpoint.value() : "";
+            this->fleetProvisioningProfile.caCertificatePem = fleetProvisioningProfileEntity.caCertificatePem.has_value() ? fleetProvisioningProfileEntity.caCertificatePem.value() : "";
+            this->fleetProvisioningProfile.clientCertificatePem = fleetProvisioningProfileEntity.clientCertificatePem.has_value() ? fleetProvisioningProfileEntity.clientCertificatePem.value() : "";
+            this->fleetProvisioningProfile.clientPrivateKeyPem = fleetProvisioningProfileEntity.clientPrivateKeyPem.has_value() ? fleetProvisioningProfileEntity.clientPrivateKeyPem.value() : "";
+            this->fleetProvisioningProfile.createKeysRequestTopic = fleetProvisioningProfileEntity.createKeysRequestTopic.has_value() ? fleetProvisioningProfileEntity.createKeysRequestTopic.value() : "";
+            this->fleetProvisioningProfile.createKeysAcceptedTopic = fleetProvisioningProfileEntity.createKeysAcceptedTopic.has_value() ? fleetProvisioningProfileEntity.createKeysAcceptedTopic.value() : "";
+            this->fleetProvisioningProfile.createKeysRejectedTopic = fleetProvisioningProfileEntity.createKeysRejectedTopic.has_value() ? fleetProvisioningProfileEntity.createKeysRejectedTopic.value() : "";
+            this->fleetProvisioningProfile.provisionRequestTopic = fleetProvisioningProfileEntity.provisionRequestTopic.has_value() ? fleetProvisioningProfileEntity.provisionRequestTopic.value() : "";
+            this->fleetProvisioningProfile.provisionAcceptedTopic = fleetProvisioningProfileEntity.provisionAcceptedTopic.has_value() ? fleetProvisioningProfileEntity.provisionAcceptedTopic.value() : "";
         } else {
-            MqttCredentialsDto enrollmentCredentialsDto;
-            enrollmentCredentialsDto.mqttEndpoint = "";
-            enrollmentCredentialsDto.caCertificatePem = "";
-            enrollmentCredentialsDto.clientCertificatePem = "";
-            enrollmentCredentialsDto.clientPrivateKeyPem = "";
-            this->enrollmentCredentials = enrollmentCredentialsDto;
+            this->fleetProvisioningProfile.mqttEndpoint = "";
+            this->fleetProvisioningProfile.caCertificatePem = "";
+            this->fleetProvisioningProfile.clientCertificatePem = "";
+            this->fleetProvisioningProfile.clientPrivateKeyPem = "";
+            this->fleetProvisioningProfile.createKeysRequestTopic = "";
+            this->fleetProvisioningProfile.createKeysAcceptedTopic = "";
+            this->fleetProvisioningProfile.createKeysRejectedTopic = "";
+            this->fleetProvisioningProfile.provisionRequestTopic = "";
+            this->fleetProvisioningProfile.provisionAcceptedTopic = "";
         }
 
-        if(connectionCredentialsOpt.has_value()) {
-            Val connectionCredentials = connectionCredentialsOpt.value();
-            this->connectionCredentials = GetMqttCredentialsDto(connectionCredentials);
+        if(deviceIdentityProfileOpt.has_value()) {
+            Val deviceIdentityProfileEntity = deviceIdentityProfileOpt.value();
+            this->deviceIdentityProfile.mqttEndpoint = deviceIdentityProfileEntity.mqttEndpoint.has_value() ? deviceIdentityProfileEntity.mqttEndpoint.value() : "";
+            this->deviceIdentityProfile.caCertificatePem = deviceIdentityProfileEntity.caCertificatePem.has_value() ? deviceIdentityProfileEntity.caCertificatePem.value() : "";
+            this->deviceIdentityProfile.clientCertificatePem = deviceIdentityProfileEntity.clientCertificatePem.has_value() ? deviceIdentityProfileEntity.clientCertificatePem.value() : "";
+            this->deviceIdentityProfile.clientPrivateKeyPem = deviceIdentityProfileEntity.clientPrivateKeyPem.has_value() ? deviceIdentityProfileEntity.clientPrivateKeyPem.value() : "";
+            
+            this->deviceIdentityProfile.publishTopics.statusTopic = "";
+            this->deviceIdentityProfile.publishTopics.telemetryTopic = "";
+            this->deviceIdentityProfile.publishTopics.logsTopic = "";
+            this->deviceIdentityProfile.publishTopics.eventsTopic = "";
+
+            if(deviceIdentityProfileEntity.publishTopics.has_value()) {
+                Val publishTopicsEntity = deviceIdentityProfileEntity.publishTopics.value();
+                if(publishTopicsEntity.statusTopic.has_value()) this->deviceIdentityProfile.publishTopics.statusTopic = publishTopicsEntity.statusTopic.value();
+                if(publishTopicsEntity.telemetryTopic.has_value()) this->deviceIdentityProfile.publishTopics.telemetryTopic = publishTopicsEntity.telemetryTopic.value();
+                if(publishTopicsEntity.logsTopic.has_value()) this->deviceIdentityProfile.publishTopics.logsTopic = publishTopicsEntity.logsTopic.value();
+                if(publishTopicsEntity.eventsTopic.has_value()) this->deviceIdentityProfile.publishTopics.eventsTopic = publishTopicsEntity.eventsTopic.value();
+            }
+
+            this->deviceIdentityProfile.subscribeTopics.commandTopic = "";
+            this->deviceIdentityProfile.subscribeTopics.otaUpdateTopic = "";
+            this->deviceIdentityProfile.subscribeTopics.featureFlagTopic = "";
+
+            if(deviceIdentityProfileEntity.subscribeTopics.has_value()) {
+                Val subscribeTopicsEntity = deviceIdentityProfileEntity.subscribeTopics.value();
+                if(subscribeTopicsEntity.commandTopic.has_value()) this->deviceIdentityProfile.subscribeTopics.commandTopic = subscribeTopicsEntity.commandTopic.value();
+                if(subscribeTopicsEntity.otaUpdateTopic.has_value()) this->deviceIdentityProfile.subscribeTopics.otaUpdateTopic = subscribeTopicsEntity.otaUpdateTopic.value();
+                if(subscribeTopicsEntity.featureFlagTopic.has_value()) this->deviceIdentityProfile.subscribeTopics.featureFlagTopic = subscribeTopicsEntity.featureFlagTopic.value();
+            }
         } else {
-            this->connectionCredentials = std::nullopt;
+            this->deviceIdentityProfile = std::nullopt;
         }
 
         if (publishTopicsOpt.has_value()) {
@@ -98,67 +116,52 @@ class DeviceService : public IDeviceService {
     Public StdString GetDeviceSecret() const override { std::lock_guard<std::mutex> lock(mutex_); return deviceSecret; }
     Public StdString GetFirmwareVersion() const override { std::lock_guard<std::mutex> lock(mutex_); return firmwareVersion; }
 
-    Public MqttCredentialsDto GetEnrollmentCredentials() const override { std::lock_guard<std::mutex> lock(mutex_); return enrollmentCredentials; }
-    Public Optional<MqttCredentialsDto> GetConnectionCredentials() const override { std::lock_guard<std::mutex> lock(mutex_); return connectionCredentials; }
+    Public FleetProvisioningProfileData GetFleetProvisioningProfile() const override { std::lock_guard<std::mutex> lock(mutex_); return fleetProvisioningProfile; }
+    Public Optional<DeviceIdentityProfileData> GetDeviceIdentityProfile() const override { std::lock_guard<std::mutex> lock(mutex_); return deviceIdentityProfile; }
 
-    Public StdSet<StdString> GetSubscribeTopics() const override { std::lock_guard<std::mutex> lock(mutex_); return subscribeTopics; }
-    Public StdString GetCommandTopic() const override { std::lock_guard<std::mutex> lock(mutex_); return commandTopic; }
-    Public StdString GetOtaUpdateTopic() const override { std::lock_guard<std::mutex> lock(mutex_); return otaUpdateTopic; }
-    Public StdString GetFeatureFlagTopic() const override { std::lock_guard<std::mutex> lock(mutex_); return featureFlagTopic; }
-
-    Public StdString GetStatusTopic() const override { std::lock_guard<std::mutex> lock(mutex_); return statusTopic; }
-    Public StdString GetTelemetryTopic() const override { std::lock_guard<std::mutex> lock(mutex_); return telemetryTopic; }
-    Public StdString GetLogsTopic() const override { std::lock_guard<std::mutex> lock(mutex_); return logsTopic; }
-    Public StdString GetEventsTopic() const override { std::lock_guard<std::mutex> lock(mutex_); return eventsTopic; }
-
-    Public Void SetEnrollmentCredentials(const MqttCredentialsDto& enrollmentCredentials) override { 
-        Var enrollmentCredentialsEntity = GetEnrollmentCredentialsEntity(enrollmentCredentials);
-        enrollmentCredentialsRepository->Update(enrollmentCredentialsEntity);
+    Public Void SetFleetProvisioningProfile(const FleetProvisioningProfileDto& fleetProvisioningProfileDto) override { 
+        Var fleetProvisioningProfileEntity = GetFleetProvisioningProfileEntity(fleetProvisioningProfileDto);
+        fleetProvisioningProfileRepository->UpdateAvailableFields(fleetProvisioningProfileDto);
         Refresh();
     }
     
-    Public Void SetConnectionCredentials(const MqttCredentialsDto& connectionCredentials) override { 
-        Var connectionCredentialsEntity = GetConnectionCredentialsEntity(connectionCredentials);
-        connectionCredentialsRepository->Update(connectionCredentialsEntity);
+    Public Void SetDeviceIdentityProfile(const DeviceIdentityProfileDto& deviceIdentityProfileDto) override { 
+        Var deviceIdentityProfileEntity = GetDeviceIdentityProfileEntity(deviceIdentityProfileDto);
+        deviceIdentityProfileRepository->UpdateAvailableFields(deviceIdentityProfileEntity);
         Refresh();
     }
 
-    Private EnrollmentCredentials GetEnrollmentCredentialsEntity(const MqttCredentialsDto& enrollmentCredentials) {
-        EnrollmentCredentials enrollmentCredentialsEntity;
-        enrollmentCredentialsEntity.id = 1;
-        enrollmentCredentialsEntity.mqttEndpoint = enrollmentCredentials.mqttEndpoint.value();
-        enrollmentCredentialsEntity.caCertificatePem = enrollmentCredentials.caCertificatePem.value();
-        enrollmentCredentialsEntity.clientCertificatePem = enrollmentCredentials.clientCertificatePem.value();
-        enrollmentCredentialsEntity.clientPrivateKeyPem = enrollmentCredentials.clientPrivateKeyPem.value();
-        return enrollmentCredentialsEntity;
+    Private FleetProvisioningProfile GetFleetProvisioningProfileEntity(const FleetProvisioningProfileDto& fleetProvisioningProfileDto) {
+        FleetProvisioningProfile fleetProvisioningProfileEntity;
+        fleetProvisioningProfileEntity.id = 1;
+        fleetProvisioningProfileEntity.mqttEndpoint = fleetProvisioningProfileDto.mqttEndpoint.value();
+        fleetProvisioningProfileEntity.caCertificatePem = fleetProvisioningProfileDto.caCertificatePem.value();
+        fleetProvisioningProfileEntity.clientCertificatePem = fleetProvisioningProfileDto.clientCertificatePem.value();
+        fleetProvisioningProfileEntity.clientPrivateKeyPem = fleetProvisioningProfileDto.clientPrivateKeyPem.value();
+        fleetProvisioningProfileEntity.createKeysRequestTopic = fleetProvisioningProfileDto.createKeysRequestTopic.value();
+        fleetProvisioningProfileEntity.createKeysAcceptedTopic = fleetProvisioningProfileDto.createKeysAcceptedTopic.value();
+        fleetProvisioningProfileEntity.createKeysRejectedTopic = fleetProvisioningProfileDto.createKeysRejectedTopic.value();
+        fleetProvisioningProfileEntity.provisionRequestTopic = fleetProvisioningProfileDto.provisionRequestTopic.value();
+        fleetProvisioningProfileEntity.provisionAcceptedTopic = fleetProvisioningProfileDto.provisionAcceptedTopic.value();
+        fleetProvisioningProfileEntity.provisionRejectedTopic = fleetProvisioningProfileDto.provisionRejectedTopic.value();
+        return fleetProvisioningProfileEntity;
     }
 
-    Private ConnectionCredentials GetConnectionCredentialsEntity(const MqttCredentialsDto& connectionCredentials) {
-        ConnectionCredentials connectionCredentialsEntity;
-        connectionCredentialsEntity.id = 1;
-        connectionCredentialsEntity.mqttEndpoint = connectionCredentials.mqttEndpoint.value();
-        connectionCredentialsEntity.caCertificatePem = connectionCredentials.caCertificatePem.value();
-        connectionCredentialsEntity.clientCertificatePem = connectionCredentials.clientCertificatePem.value();
-        connectionCredentialsEntity.clientPrivateKeyPem = connectionCredentials.clientPrivateKeyPem.value();
-        return connectionCredentialsEntity;
-    }
-
-    Private MqttCredentialsDto GetMqttCredentialsDto(const EnrollmentCredentials& enrollmentCredentials) {
-        MqttCredentialsDto enrollmentCredentialsDto;
-        enrollmentCredentialsDto.mqttEndpoint = enrollmentCredentials.mqttEndpoint;
-        enrollmentCredentialsDto.caCertificatePem = enrollmentCredentials.caCertificatePem;
-        enrollmentCredentialsDto.clientCertificatePem = enrollmentCredentials.clientCertificatePem;
-        enrollmentCredentialsDto.clientPrivateKeyPem = enrollmentCredentials.clientPrivateKeyPem;
-        return enrollmentCredentialsDto;
-    }
-
-    Private MqttCredentialsDto GetMqttCredentialsDto(const ConnectionCredentials& connectionCredentials) {
-        MqttCredentialsDto connectionCredentialsDto;
-        connectionCredentialsDto.mqttEndpoint = connectionCredentials.mqttEndpoint;
-        connectionCredentialsDto.caCertificatePem = connectionCredentials.caCertificatePem;
-        connectionCredentialsDto.clientCertificatePem = connectionCredentials.clientCertificatePem;
-        connectionCredentialsDto.clientPrivateKeyPem = connectionCredentials.clientPrivateKeyPem;
-        return connectionCredentialsDto;
+    Private DeviceIdentityProfile GetDeviceIdentityProfileEntity(const DeviceIdentityProfileDto& deviceIdentityProfileDto) {
+        DeviceIdentityProfile deviceIdentityProfileEntity;
+        deviceIdentityProfileEntity.id = 1;
+        deviceIdentityProfileEntity.mqttEndpoint = deviceIdentityProfileDto.mqttEndpoint.value();
+        deviceIdentityProfileEntity.caCertificatePem = deviceIdentityProfileDto.caCertificatePem.value();
+        deviceIdentityProfileEntity.clientCertificatePem = deviceIdentityProfileDto.clientCertificatePem.value();
+        deviceIdentityProfileEntity.clientPrivateKeyPem = deviceIdentityProfileDto.clientPrivateKeyPem.value();
+        deviceIdentityProfileEntity.publishTopics.statusTopic = deviceIdentityProfileDto.publishTopics.statusTopic.value();
+        deviceIdentityProfileEntity.publishTopics.telemetryTopic = deviceIdentityProfileDto.publishTopics.telemetryTopic.value();
+        deviceIdentityProfileEntity.publishTopics.logsTopic = deviceIdentityProfileDto.publishTopics.logsTopic.value();
+        deviceIdentityProfileEntity.publishTopics.eventsTopic = deviceIdentityProfileDto.publishTopics.eventsTopic.value();
+        deviceIdentityProfileEntity.subscribeTopics.commandTopic = deviceIdentityProfileDto.subscribeTopics.commandTopic.value();
+        deviceIdentityProfileEntity.subscribeTopics.otaUpdateTopic = deviceIdentityProfileDto.subscribeTopics.otaUpdateTopic.value();
+        deviceIdentityProfileEntity.subscribeTopics.featureFlagTopic = deviceIdentityProfileDto.subscribeTopics.featureFlagTopic.value();
+        return deviceIdentityProfileEntity;
     }
 };
 #endif // DEVICESERVICE_H

@@ -3,11 +3,8 @@
 
 #include <StandardDefines.h>
 
-/* @Entity */
+/* @Serializable */
 class PublishTopics {
-
-    /* @Id */
-    Public optional<int> id;
 
     Public optional<StdString> statusTopic;
 
@@ -16,7 +13,6 @@ class PublishTopics {
     Public optional<StdString> logsTopic;
 
     Public optional<StdString> eventsTopic;
-
 };
 
 #endif // PUBLISHTOPICS_H
