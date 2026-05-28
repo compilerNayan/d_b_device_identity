@@ -21,6 +21,8 @@ class FleetProvisioningProfileData {
     Public StdString provisionRequestTopic;
 
     Public StdString provisionAcceptedTopic;
+
+    Public StdString provisionRejectedTopic;
 };
 
 

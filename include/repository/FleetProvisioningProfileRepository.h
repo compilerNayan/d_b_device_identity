@@ -25,6 +25,7 @@ class FleetProvisioningProfileRepository : public CpaRepository<FleetProvisionin
             if(fleetProvisioningProfile.provisionRejectedTopic.has_value()) existingEntity.value().provisionRejectedTopic = fleetProvisioningProfile.provisionRejectedTopic.value();
         }
         else {
+            fleetProvisioningProfile.id = 1;
             existingEntity = fleetProvisioningProfile;
         }
         return Save(existingEntity.value());

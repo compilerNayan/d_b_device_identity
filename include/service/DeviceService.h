@@ -58,6 +58,7 @@ class DeviceService : public IDeviceService {
             if(fleetProvisioningProfileEntity.createKeysRejectedTopic.has_value()) this->fleetProvisioningProfile.createKeysRejectedTopic = fleetProvisioningProfileEntity.createKeysRejectedTopic.value();
             if(fleetProvisioningProfileEntity.provisionRequestTopic.has_value()) this->fleetProvisioningProfile.provisionRequestTopic = fleetProvisioningProfileEntity.provisionRequestTopic.value();
             if(fleetProvisioningProfileEntity.provisionAcceptedTopic.has_value()) this->fleetProvisioningProfile.provisionAcceptedTopic = fleetProvisioningProfileEntity.provisionAcceptedTopic.value();
+            if(fleetProvisioningProfileEntity.provisionRejectedTopic.has_value()) this->fleetProvisioningProfile.provisionRejectedTopic = fleetProvisioningProfileEntity.provisionRejectedTopic.value();
         }
 
         this->deviceIdentityProfile->mqttEndpoint = DEVICE_IDENTITY_MQTT_ENDPOINT;

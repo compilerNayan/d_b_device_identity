@@ -21,6 +21,7 @@ class DeviceIdentityProfileRepository : public CpaRepository<DeviceIdentityProfi
             if(deviceIdentityProfile.subscribeTopics.has_value()) existingEntity.value().subscribeTopics = deviceIdentityProfile.subscribeTopics.value();
         }
         else {
+            deviceIdentityProfile.id = 1;
             existingEntity = deviceIdentityProfile;
         }
 

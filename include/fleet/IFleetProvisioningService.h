@@ -4,7 +4,7 @@
 #include <StandardDefines.h>
 #include "EnrollmentStatus.h"
 
-DefineStandardPointer(IFleetProvisioningService);
+DefineStandardPointers(IFleetProvisioningService);
 class IFleetProvisioningService {
     Public Virtual Bool IsEnrolled() = 0;
     Public Virtual Void EnrollDevice() = 0;

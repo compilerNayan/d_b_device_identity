@@ -24,6 +24,7 @@ class FleetProvisioningProfileDto {
 
     Public optional<StdString> provisionAcceptedTopic;
 
+    Public optional<StdString> provisionRejectedTopic;
 };
 
 #endif // FLEETPROVISIONINGPROFILEDTO_H
