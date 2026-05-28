@@ -4,6 +4,7 @@
 #include "IDeviceService.h"
 #include "../repository/FleetProvisioningProfileRepository.h"
 #include "../repository/DeviceIdentityProfileRepository.h"
+#include "ConnectionConstants.h"
 
 /* @Service */
 class DeviceService : public IDeviceService {
@@ -36,58 +37,65 @@ class DeviceService : public IDeviceService {
         deviceSecret = "1234";
         firmwareVersion = "1.0.0";
 
+        this->fleetProvisioningProfile.mqttEndpoint = FLEET_PROVISIONING_MQTT_ENDPOINT;
+        this->fleetProvisioningProfile.caCertificatePem = FLEET_PROVISIONING_CA_CERTIFICATE_PEM;
+        this->fleetProvisioningProfile.clientCertificatePem = FLEET_PROVISIONING_CLIENT_CERTIFICATE_PEM;
+        this->fleetProvisioningProfile.clientPrivateKeyPem = FLEET_PROVISIONING_CLIENT_PRIVATE_KEY_PEM;
+        this->fleetProvisioningProfile.createKeysRequestTopic = FLEET_PROVISIONING_CREATE_KEYS_REQUEST_TOPIC;
+        this->fleetProvisioningProfile.createKeysAcceptedTopic = FLEET_PROVISIONING_CREATE_KEYS_ACCEPTED_TOPIC;
+        this->fleetProvisioningProfile.createKeysRejectedTopic = FLEET_PROVISIONING_CREATE_KEYS_REJECTED_TOPIC;
+        this->fleetProvisioningProfile.provisionRequestTopic = FLEET_PROVISIONING_PROVISION_REQUEST_TOPIC;
+        this->fleetProvisioningProfile.provisionAcceptedTopic = FLEET_PROVISIONING_PROVISION_ACCEPTED_TOPIC;
+
         if (fleetProvisioningProfileOpt.has_value()) {
             Val fleetProvisioningProfileEntity = fleetProvisioningProfileOpt.value();
-            this->fleetProvisioningProfile.mqttEndpoint = fleetProvisioningProfileEntity.mqttEndpoint.has_value() ? fleetProvisioningProfileEntity.mqttEndpoint.value() : "";
-            this->fleetProvisioningProfile.caCertificatePem = fleetProvisioningProfileEntity.caCertificatePem.has_value() ? fleetProvisioningProfileEntity.caCertificatePem.value() : "";
-            this->fleetProvisioningProfile.clientCertificatePem = fleetProvisioningProfileEntity.clientCertificatePem.has_value() ? fleetProvisioningProfileEntity.clientCertificatePem.value() : "";
-            this->fleetProvisioningProfile.clientPrivateKeyPem = fleetProvisioningProfileEntity.clientPrivateKeyPem.has_value() ? fleetProvisioningProfileEntity.clientPrivateKeyPem.value() : "";
-            this->fleetProvisioningProfile.createKeysRequestTopic = fleetProvisioningProfileEntity.createKeysRequestTopic.has_value() ? fleetProvisioningProfileEntity.createKeysRequestTopic.value() : "";
-            this->fleetProvisioningProfile.createKeysAcceptedTopic = fleetProvisioningProfileEntity.createKeysAcceptedTopic.has_value() ? fleetProvisioningProfileEntity.createKeysAcceptedTopic.value() : "";
-            this->fleetProvisioningProfile.createKeysRejectedTopic = fleetProvisioningProfileEntity.createKeysRejectedTopic.has_value() ? fleetProvisioningProfileEntity.createKeysRejectedTopic.value() : "";
-            this->fleetProvisioningProfile.provisionRequestTopic = fleetProvisioningProfileEntity.provisionRequestTopic.has_value() ? fleetProvisioningProfileEntity.provisionRequestTopic.value() : "";
-            this->fleetProvisioningProfile.provisionAcceptedTopic = fleetProvisioningProfileEntity.provisionAcceptedTopic.has_value() ? fleetProvisioningProfileEntity.provisionAcceptedTopic.value() : "";
-        } else {
-            this->fleetProvisioningProfile.mqttEndpoint = "";
-            this->fleetProvisioningProfile.caCertificatePem = "";
-            this->fleetProvisioningProfile.clientCertificatePem = "";
-            this->fleetProvisioningProfile.clientPrivateKeyPem = "";
-            this->fleetProvisioningProfile.createKeysRequestTopic = "";
-            this->fleetProvisioningProfile.createKeysAcceptedTopic = "";
-            this->fleetProvisioningProfile.createKeysRejectedTopic = "";
-            this->fleetProvisioningProfile.provisionRequestTopic = "";
-            this->fleetProvisioningProfile.provisionAcceptedTopic = "";
+            if(fleetProvisioningProfileEntity.mqttEndpoint.has_value()) this->fleetProvisioningProfile.mqttEndpoint = fleetProvisioningProfileEntity.mqttEndpoint.value();
+            if(fleetProvisioningProfileEntity.caCertificatePem.has_value()) this->fleetProvisioningProfile.caCertificatePem = fleetProvisioningProfileEntity.caCertificatePem.value();
+            if(fleetProvisioningProfileEntity.clientCertificatePem.has_value()) this->fleetProvisioningProfile.clientCertificatePem = fleetProvisioningProfileEntity.clientCertificatePem.value();
+            if(fleetProvisioningProfileEntity.clientPrivateKeyPem.has_value()) this->fleetProvisioningProfile.clientPrivateKeyPem = fleetProvisioningProfileEntity.clientPrivateKeyPem.value();
+            if(fleetProvisioningProfileEntity.createKeysRequestTopic.has_value()) this->fleetProvisioningProfile.createKeysRequestTopic = fleetProvisioningProfileEntity.createKeysRequestTopic.value();
+            if(fleetProvisioningProfileEntity.createKeysAcceptedTopic.has_value()) this->fleetProvisioningProfile.createKeysAcceptedTopic = fleetProvisioningProfileEntity.createKeysAcceptedTopic.value();
+            if(fleetProvisioningProfileEntity.createKeysRejectedTopic.has_value()) this->fleetProvisioningProfile.createKeysRejectedTopic = fleetProvisioningProfileEntity.createKeysRejectedTopic.value();
+            if(fleetProvisioningProfileEntity.provisionRequestTopic.has_value()) this->fleetProvisioningProfile.provisionRequestTopic = fleetProvisioningProfileEntity.provisionRequestTopic.value();
+            if(fleetProvisioningProfileEntity.provisionAcceptedTopic.has_value()) this->fleetProvisioningProfile.provisionAcceptedTopic = fleetProvisioningProfileEntity.provisionAcceptedTopic.value();
         }
 
+        this->deviceIdentityProfile->mqttEndpoint = DEVICE_IDENTITY_MQTT_ENDPOINT;
+        this->deviceIdentityProfile->caCertificatePem = DEVICE_IDENTITY_CA_CERTIFICATE_PEM;
+        
+        this->deviceIdentityProfile->publishTopics.statusTopic = DEVICE_IDENTITY_PUBLISH_TOPICS_STATUS_TOPIC;
+        this->deviceIdentityProfile->publishTopics.telemetryTopic = DEVICE_IDENTITY_PUBLISH_TOPICS_TELEMETRY_TOPIC;
+        this->deviceIdentityProfile->publishTopics.logsTopic = DEVICE_IDENTITY_PUBLISH_TOPICS_LOGS_TOPIC;
+        this->deviceIdentityProfile->publishTopics.eventsTopic = DEVICE_IDENTITY_PUBLISH_TOPICS_EVENTS_TOPIC;
+
+        this->deviceIdentityProfile->subscribeTopics.commandTopic = DEVICE_IDENTITY_SUBSCRIBE_TOPICS_COMMAND_TOPIC;
+        this->deviceIdentityProfile->subscribeTopics.otaUpdateTopic = DEVICE_IDENTITY_SUBSCRIBE_TOPICS_OTA_UPDATE_TOPIC;
+        this->deviceIdentityProfile->subscribeTopics.featureFlagTopic = DEVICE_IDENTITY_SUBSCRIBE_TOPICS_FEATURE_FLAG_TOPIC;
+
         if(deviceIdentityProfileOpt.has_value()) {
-            Val deviceIdentityProfileEntity = deviceIdentityProfileOpt.value();
-            this->deviceIdentityProfile->mqttEndpoint = deviceIdentityProfileEntity.mqttEndpoint.has_value() ? deviceIdentityProfileEntity.mqttEndpoint.value() : "";
-            this->deviceIdentityProfile->caCertificatePem = deviceIdentityProfileEntity.caCertificatePem.has_value() ? deviceIdentityProfileEntity.caCertificatePem.value() : "";
-            this->deviceIdentityProfile->clientCertificatePem = deviceIdentityProfileEntity.clientCertificatePem.has_value() ? deviceIdentityProfileEntity.clientCertificatePem.value() : "";
-            this->deviceIdentityProfile->clientPrivateKeyPem = deviceIdentityProfileEntity.clientPrivateKeyPem.has_value() ? deviceIdentityProfileEntity.clientPrivateKeyPem.value() : "";
-            
-            this->deviceIdentityProfile->publishTopics.statusTopic = "";
-            this->deviceIdentityProfile->publishTopics.telemetryTopic = "";
-            this->deviceIdentityProfile->publishTopics.logsTopic = "";
-            this->deviceIdentityProfile->publishTopics.eventsTopic = "";
+            if(deviceIdentityProfileOpt->clientCertificatePem.has_value() &&
+                deviceIdentityProfileOpt->clientPrivateKeyPem.has_value()) {
+                Val deviceIdentityProfileEntity = deviceIdentityProfileOpt.value();
+                if(deviceIdentityProfileEntity.mqttEndpoint.has_value()) this->deviceIdentityProfile->mqttEndpoint = deviceIdentityProfileEntity.mqttEndpoint.value();
+                if(deviceIdentityProfileEntity.caCertificatePem.has_value()) this->deviceIdentityProfile->caCertificatePem = deviceIdentityProfileEntity.caCertificatePem.value();
+                if(deviceIdentityProfileEntity.clientCertificatePem.has_value()) this->deviceIdentityProfile->clientCertificatePem = deviceIdentityProfileEntity.clientCertificatePem.value();
+                if(deviceIdentityProfileEntity.clientPrivateKeyPem.has_value()) this->deviceIdentityProfile->clientPrivateKeyPem = deviceIdentityProfileEntity.clientPrivateKeyPem.value();
+                if(deviceIdentityProfileEntity.publishTopics.has_value()) {
+                    Val publishTopicsEntity = deviceIdentityProfileEntity.publishTopics.value();
+                    if(publishTopicsEntity.statusTopic.has_value()) this->deviceIdentityProfile->publishTopics.statusTopic = publishTopicsEntity.statusTopic.value();
+                    if(publishTopicsEntity.telemetryTopic.has_value()) this->deviceIdentityProfile->publishTopics.telemetryTopic = publishTopicsEntity.telemetryTopic.value();
+                    if(publishTopicsEntity.logsTopic.has_value()) this->deviceIdentityProfile->publishTopics.logsTopic = publishTopicsEntity.logsTopic.value();
+                    if(publishTopicsEntity.eventsTopic.has_value()) this->deviceIdentityProfile->publishTopics.eventsTopic = publishTopicsEntity.eventsTopic.value();
+                }
+                if(deviceIdentityProfileEntity.subscribeTopics.has_value()) {
+                    Val subscribeTopicsEntity = deviceIdentityProfileEntity.subscribeTopics.value();
+                    if(subscribeTopicsEntity.commandTopic.has_value()) this->deviceIdentityProfile->subscribeTopics.commandTopic = subscribeTopicsEntity.commandTopic.value();
+                    if(subscribeTopicsEntity.otaUpdateTopic.has_value()) this->deviceIdentityProfile->subscribeTopics.otaUpdateTopic = subscribeTopicsEntity.otaUpdateTopic.value();
+                    if(subscribeTopicsEntity.featureFlagTopic.has_value()) this->deviceIdentityProfile->subscribeTopics.featureFlagTopic = subscribeTopicsEntity.featureFlagTopic.value();
+                }
 
-            if(deviceIdentityProfileEntity.publishTopics.has_value()) {
-                Val publishTopicsEntity = deviceIdentityProfileEntity.publishTopics.value();
-                if(publishTopicsEntity.statusTopic.has_value()) this->deviceIdentityProfile->publishTopics.statusTopic = publishTopicsEntity.statusTopic.value();
-                if(publishTopicsEntity.telemetryTopic.has_value()) this->deviceIdentityProfile->publishTopics.telemetryTopic = publishTopicsEntity.telemetryTopic.value();
-                if(publishTopicsEntity.logsTopic.has_value()) this->deviceIdentityProfile->publishTopics.logsTopic = publishTopicsEntity.logsTopic.value();
-                if(publishTopicsEntity.eventsTopic.has_value()) this->deviceIdentityProfile->publishTopics.eventsTopic = publishTopicsEntity.eventsTopic.value();
-            }
-
-            this->deviceIdentityProfile->subscribeTopics.commandTopic = "";
-            this->deviceIdentityProfile->subscribeTopics.otaUpdateTopic = "";
-            this->deviceIdentityProfile->subscribeTopics.featureFlagTopic = "";
-
-            if(deviceIdentityProfileEntity.subscribeTopics.has_value()) {
-                Val subscribeTopicsEntity = deviceIdentityProfileEntity.subscribeTopics.value();
-                if(subscribeTopicsEntity.commandTopic.has_value()) this->deviceIdentityProfile->subscribeTopics.commandTopic = subscribeTopicsEntity.commandTopic.value();
-                if(subscribeTopicsEntity.otaUpdateTopic.has_value()) this->deviceIdentityProfile->subscribeTopics.otaUpdateTopic = subscribeTopicsEntity.otaUpdateTopic.value();
-                if(subscribeTopicsEntity.featureFlagTopic.has_value()) this->deviceIdentityProfile->subscribeTopics.featureFlagTopic = subscribeTopicsEntity.featureFlagTopic.value();
+            } else {
+                this->deviceIdentityProfile = std::nullopt;
             }
         } else {
             this->deviceIdentityProfile = std::nullopt;
