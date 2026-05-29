@@ -249,7 +249,7 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
     Private mutable std::mutex mutex_;
 
     Private StdString fleetProvisioningMqttEndpoint = "mqtts://a2hlcpmplecdfa-ats.iot.us-east-1.amazonaws.com";
-    Private StdString fleetProvisioningCaCertificatePem = R("-----BEGIN CERTIFICATE-----
+    Private StdString fleetProvisioningCaCertificatePem = R"(-----BEGIN CERTIFICATE-----
 MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF
 ADA5MQswCQYDVQQGEwJVUzEPMA0GA1UEChMGQW1hem9uMRkwFwYDVQQDExBBbWF6
 b24gUm9vdCBDQSAxMB4XDTE1MDUyNjAwMDAwMFoXDTM4MDExNzAwMDAwMFowOTEL
@@ -268,8 +268,8 @@ N+gDS63pYaACbvXy8MWy7Vu33PqUXHeeE6V/Uq2V8viTO96LXFvKWlJbYK8U90vv
 o/ufQJVtMVT8QtPHRh8jrdkPSHCa2XV4cdFyQzR1bldZwgJcJmApzyMZFo6IQ6XU
 5MsI+yMRQ+hDKXJioaldXgjUkK642M4UwtBV8ob2xJNDd2ZhwLnoQdeXeGADbkpy
 rqXRfboQnoZsG4q5WTP468SQvvG5
------END CERTIFICATE-----");
-    Private StdString fleetProvisioningClientCertificatePem = R("-----BEGIN CERTIFICATE-----
+-----END CERTIFICATE-----)";
+    Private StdString fleetProvisioningClientCertificatePem = R"(-----BEGIN CERTIFICATE-----
 MIIDWTCCAkGgAwIBAgIUauxlGYRu7NTS62kAseuLDsE/Y/UwDQYJKoZIhvcNAQEL
 BQAwTTFLMEkGA1UECwxCQW1hem9uIFdlYiBTZXJ2aWNlcyBPPUFtYXpvbi5jb20g
 SW5jLiBMPVNlYXR0bGUgU1Q9V2FzaGluZ3RvbiBDPVVTMB4XDTI2MDUyOTE3NDQw
@@ -288,8 +288,8 @@ FDmOO+btQrcUBkpnPgbN3h+2+5EppGZLX/rnFeFwkWqdTrRDlyXB7lCjkc3jLqg/
 W1t0m7RNivO3UZA/V4VA3m0SErQ4FBmLqiL1df7UHQRhuUSjfTaxr0z7YyEqLECf
 jCNZRcw2ZolcvWjfj7nTRl7XdXkG2rCTGuAuqBq3w1dTZ8hJT3vYIlxSUH9b1KOi
 vO99IL4QPXeO6v/Kr/jLpOIphQB4+ZPuhVBw2NSh+xxDL/wOi3/RTeFhlcQ+
------END CERTIFICATE-----");
-    Private StdString fleetProvisioningClientPrivateKeyPem = R("-----BEGIN RSA PRIVATE KEY-----
+-----END CERTIFICATE-----)";
+    Private StdString fleetProvisioningClientPrivateKeyPem = R"(-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEAxG1d9B8xOyWUCHoCWiQyiyyNSzNYhrWMZfQXV2aIlHkMvgLA
 NemnB8frdq/zgq2Sx3hIByyfio/CaLoGuG5nua8unt0pwASD/itwz+CaedsYelfa
 JqVoqL7/+sr0JtIgBBCPqARznFNCLrluVqs3aB4EKK31wquOTRdy9kylY8uO0+eR
@@ -315,7 +315,7 @@ xIDlkEJJg4jjLBWtWfA2qv1WqBrWyWICFe6ovECZDP56JjSbYjmAdXz2smsUz9zj
 uf2FAoGBAJlbo9tNE0u4wDIaHgTLUpRHgb8DmEEkwCZaCABfETOBZrqL0kxJH21e
 SpaL6Yfe5hcAfG6XE+3IWkihueCz8ky6fi7jlOnV+A65YbcpmYoPv44ppuP25Qvy
 K/N00MetiubAo1fiCoetzDF1FteCd9gt7Y3TqunkpOAKU4qvIZ9e
------END RSA PRIVATE KEY-----");
+-----END RSA PRIVATE KEY-----)";
     
     Private StdString fleetProvisioningCreateKeysRequestTopic = "$aws/certificates/create/json";
     Private StdString fleetProvisioningCreateKeysAcceptedTopic = "$aws/certificates/create/json/accepted";
