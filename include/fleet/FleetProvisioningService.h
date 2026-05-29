@@ -4,10 +4,15 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_event.h"
-#include "mqtt_client.h"
+#include "esp_log.h"
+#include "esp_netif.h"
 #include "esp_sntp.h"
 #include "esp_wifi.h"
+#include "mqtt_client.h"
 #include "nvs_flash.h"
+#include <sys/time.h>
+#include <errno.h>
+#include <string.h>
 #include <sys/time.h>
 #include <mutex>
 
@@ -109,6 +114,40 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private StdString awsCaCertificatePem;
     Private StdString ownershipToken;
     Private StdString thingName;
+
+    Private bool json_extract_string(const char *json, const char *key, char *out, size_t out_len) {
+        char pattern[64];
+        snprintf(pattern, sizeof(pattern), "\"%s\":\"", key);
+        const char *start = strstr(json, pattern);
+        if (!start) {
+            return false;
+        }
+        start += strlen(pattern);
+        const char *end = strchr(start, '"');
+        if (!end || static_cast<size_t>(end - start) >= out_len) {
+            return false;
+        }
+        memcpy(out, start, static_cast<size_t>(end - start));
+        out[end - start] = '\0';
+        return true;
+    }
+    
+    Private void unescape_json_to_pem(const char *escaped, char *out, size_t out_len) {
+        size_t j = 0;
+        for (size_t i = 0; escaped[i] != '\0' && j + 1 < out_len; ++i) {
+            if (escaped[i] == '\\' && escaped[i + 1] == 'n') {
+                out[j++] = '\n';
+                ++i;
+            } else if (escaped[i] == '\\' && escaped[i + 1] == '\\') {
+                out[j++] = '\\';
+                ++i;
+            } else {
+                out[j++] = escaped[i];
+            }
+        }
+        out[j] = '\0';
+    }
+    
 
     Private Void StartMqttClient() {
         if (mqttStarted) return;

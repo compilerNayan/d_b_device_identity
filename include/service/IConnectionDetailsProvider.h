@@ -29,6 +29,8 @@ class IConnectionDetailsProvider {
     Public Virtual StdString GetFleetProvisioningProvisionAcceptedTopic() const = 0;
     Public Virtual StdString GetFleetProvisioningProvisionRejectedTopic() const = 0;
 
+    Public Virtual Bool IsDeviceIdentityProfilePresent() const = 0;
+
     Public Virtual StdString GetDeviceIdentityMqttEndpoint() const = 0;
     Public Virtual StdString GetDeviceIdentityCaCertificatePem() const = 0;
     Public Virtual StdString GetDeviceIdentityClientCertificatePem() const = 0;

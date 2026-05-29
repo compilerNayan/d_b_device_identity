@@ -15,17 +15,17 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
 
     Public StdString GetSerialNumber() const override {
         std::lock_guard<std::mutex> lock(mutex_);
-        return serialNumber;
+        return "1234";
     }
 
     Public StdString GetDeviceSecret() const override {
         std::lock_guard<std::mutex> lock(mutex_);
-        return deviceSecret;
+        return "1234";
     }
 
     Public StdString GetFirmwareVersion() const override {
         std::lock_guard<std::mutex> lock(mutex_);
-        return firmwareVersion;
+        return "1.0.0";
     }
 
     Public StdString GetDeviceType() const override {
@@ -148,6 +148,16 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
         return deviceIdentitySubscribeTopicsCommandTopic;
     }
 
+    Public StdString GetDeviceIdentitySubscribeTopicsOtaUpdateTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return deviceIdentitySubscribeTopicsOtaUpdateTopic;
+    }
+
+    Public StdString GetDeviceIdentitySubscribeTopicsFeatureFlagTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return deviceIdentitySubscribeTopicsFeatureFlagTopic;
+    }
+
     Public Void Refresh() override {
         std::lock_guard<std::mutex> lock(mutex_);
         RefreshFleetProvisioningProfile();
@@ -191,7 +201,8 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
                                                         fleetProvisioningProvisionAcceptedTopicSuffix;
             }
             
-            if (fleetProvisioningProfileEntity.provisionRejectedTopic.has_value()) fleetProvisioningProvisionRejectedTopic = fleetProvisioningProfileEntity.provisionRejectedTopic.value();
+            if (fleetProvisioningProfileEntity.provisionRejectedTopic.has_value()) {
+                fleetProvisioningProvisionRejectedTopic = fleetProvisioningProfileEntity.provisionRejectedTopic.value();
             } else {
                 if (fleetProvisioningProfileEntity.provisionRejectedTopicPrefix.has_value()) fleetProvisioningProvisionRejectedTopicPrefix = fleetProvisioningProfileEntity.provisionRejectedTopicPrefix.value();
                 if (fleetProvisioningProfileEntity.provisionRejectedTopicSuffix.has_value()) fleetProvisioningProvisionRejectedTopicSuffix = fleetProvisioningProfileEntity.provisionRejectedTopicSuffix.value();
@@ -199,7 +210,7 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
                                                         fleetProvisioningTemplateName + 
                                                         fleetProvisioningProvisionRejectedTopicSuffix;
             }
-        }
+        } 
     }
 
     Private Void RefreshDeviceIdentityProfile() {
@@ -220,18 +231,22 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
 
             StdString deviceIdentityTopicsPrefix = tenantId + "/" + deviceType + "/" + thingName;
 
-            if (deviceIdentityProfileEntity.publishTopicsStatusTopic.has_value()) deviceIdentityPublishTopicsStatusTopic = deviceIdentityTopicsPrefix + "/status";
-            if (deviceIdentityProfileEntity.publishTopicsTelemetryTopic.has_value()) deviceIdentityPublishTopicsTelemetryTopic = deviceIdentityTopicsPrefix + "/telemetry";
-            if (deviceIdentityProfileEntity.publishTopicsLogsTopic.has_value()) deviceIdentityPublishTopicsLogsTopic = deviceIdentityTopicsPrefix + "/logs";
-            if (deviceIdentityProfileEntity.publishTopicsEventsTopic.has_value()) deviceIdentityPublishTopicsEventsTopic = deviceIdentityTopicsPrefix + "/events";
+            if(deviceIdentityProfileEntity.publishTopics.has_value()) {
+                if(deviceIdentityProfileEntity.publishTopics->statusTopic.has_value()) deviceIdentityPublishTopicsStatusTopic = deviceIdentityTopicsPrefix + "/status";
+                if(deviceIdentityProfileEntity.publishTopics->telemetryTopic.has_value()) deviceIdentityPublishTopicsTelemetryTopic = deviceIdentityTopicsPrefix + "/telemetry";
+                if(deviceIdentityProfileEntity.publishTopics->logsTopic.has_value()) deviceIdentityPublishTopicsLogsTopic = deviceIdentityTopicsPrefix + "/logs";
+                if(deviceIdentityProfileEntity.publishTopics->eventsTopic.has_value()) deviceIdentityPublishTopicsEventsTopic = deviceIdentityTopicsPrefix + "/events";
+            }
 
-            if (deviceIdentityProfileEntity.subscribeTopicsCommandTopic.has_value()) deviceIdentitySubscribeTopicsCommandTopic = deviceIdentityTopicsPrefix + "/command";
-            if (deviceIdentityProfileEntity.subscribeTopicsOtaUpdateTopic.has_value()) deviceIdentitySubscribeTopicsOtaUpdateTopic = deviceIdentityTopicsPrefix + "/ota/update";
-            if (deviceIdentityProfileEntity.subscribeTopicsFeatureFlagTopic.has_value()) deviceIdentitySubscribeTopicsFeatureFlagTopic = deviceIdentityTopicsPrefix + "/feature/flag";
-        }
+            if(deviceIdentityProfileEntity.subscribeTopics.has_value()) {
+                if(deviceIdentityProfileEntity.subscribeTopics->commandTopic.has_value()) deviceIdentitySubscribeTopicsCommandTopic = deviceIdentityTopicsPrefix + "/command";
+                if(deviceIdentityProfileEntity.subscribeTopics->otaUpdateTopic.has_value()) deviceIdentitySubscribeTopicsOtaUpdateTopic = deviceIdentityTopicsPrefix + "/ota/update";
+                if(deviceIdentityProfileEntity.subscribeTopics->featureFlagTopic.has_value()) deviceIdentitySubscribeTopicsFeatureFlagTopic = deviceIdentityTopicsPrefix + "/feature/flag";
+            }
+        } 
     }
 
-    std::lock_guard<std::mutex> lock(mutex_);
+    Private mutable std::mutex mutex_;
 
     Private StdString fleetProvisioningMqttEndpoint = "mqtts://a2hlcpmplecdfa-ats.iot.us-east-1.amazonaws.com";
     Private StdString fleetProvisioningTemplateName = "SomeTemplateName";
