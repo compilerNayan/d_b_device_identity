@@ -4,7 +4,7 @@
 #include "IDeviceService.h"
 #include "../repository/FleetProvisioningProfileRepository.h"
 #include "../repository/DeviceIdentityProfileRepository.h"
-#include "ConnectionConstants.h"
+#include "IConnectionDetailsProvider.h"
 
 /* @Service */
 class DeviceService : public IDeviceService {
