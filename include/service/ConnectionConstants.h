@@ -1,16 +1,21 @@
 #ifndef CONNECTIONCONSTANTS_H
 #define CONNECTIONCONSTANTS_H
 
-#define FLEET_PROVISIONING_MQTT_ENDPOINT "fleet/provisioning/mqtt/endpoint"
-#define FLEET_PROVISIONING_CA_CERTIFICATE_PEM "fleet/provisioning/ca/certificate.pem"
-#define FLEET_PROVISIONING_CLIENT_CERTIFICATE_PEM "fleet/provisioning/client/certificate.pem"
-#define FLEET_PROVISIONING_CLIENT_PRIVATE_KEY_PEM "fleet/provisioning/client/private/key.pem"
+#include <StandardDefines.h>
 
-#define FLEET_PROVISIONING_CREATE_KEYS_REQUEST_TOPIC "create/keys/request"
-#define FLEET_PROVISIONING_CREATE_KEYS_ACCEPTED_TOPIC "create/keys/accepted"
-#define FLEET_PROVISIONING_CREATE_KEYS_REJECTED_TOPIC "create/keys/rejected"
-#define FLEET_PROVISIONING_PROVISION_REQUEST_TOPIC "provision/request"
-#define FLEET_PROVISIONING_PROVISION_ACCEPTED_TOPIC "provision/accepted"
+
+
+
+static const char *const TOPIC_CREATE_ACCEPTED =
+    "";
+static const char *const TOPIC_CREATE_REJECTED =
+    "";
+static const char *const TOPIC_CREATE_REQUEST =
+    "";
+
+
+
+
 
 #define DEVICE_IDENTITY_MQTT_ENDPOINT "device/identity/mqtt/endpoint"
 #define DEVICE_IDENTITY_CA_CERTIFICATE_PEM "device/identity/ca/certificate.pem"

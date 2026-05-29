@@ -12,20 +12,17 @@ class DeviceIdentityProfile {
     /* @NotNull */
     Public optional<int> id;
 
-    /* @NotNull */
     Public optional<StdString> mqttEndpoint;
 
-    /* @NotNull */
+    Public optional<StdString> tenantId;
+    Public optional<StdString> deviceType;
+    Public optional<StdString> thingName;
+
     Public optional<StdString> caCertificatePem;
-
-    /* @NotNull */
     Public optional<StdString> clientCertificatePem;
-
-    /* @NotNull */
     Public optional<StdString> clientPrivateKeyPem;
 
     Public optional<PublishTopics> publishTopics;
-
     Public optional<SubscribeTopics> subscribeTopics;
 
 };

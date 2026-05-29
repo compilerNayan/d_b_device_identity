@@ -227,7 +227,6 @@ class FleetProvisioningService : public IFleetProvisioningService {
         std::lock_guard<std::mutex> lock(mutex_);
 
         DeviceIdentityProfileDto identityDto;
-        identityDto.caCertificatePem   = Optional<StdString>(awsCaCertificatePem);
         identityDto.clientCertificatePem = Optional<StdString>(awsDeviceCertPem);
         identityDto.clientPrivateKeyPem  = Optional<StdString>(devicePrivateKeyPem);
 
