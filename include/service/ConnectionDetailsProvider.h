@@ -249,7 +249,6 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
     Private mutable std::mutex mutex_;
 
     Private StdString fleetProvisioningMqttEndpoint = "mqtts://a2hlcpmplecdfa-ats.iot.us-east-1.amazonaws.com";
-    Private StdString fleetProvisioningTemplateName = "SomeTemplateName";
     Private StdString fleetProvisioningCaCertificatePem = "fleet/provisioning/ca/certificate.pem";
     Private StdString fleetProvisioningClientCertificatePem = "fleet/provisioning/client/certificate.pem";
     Private StdString fleetProvisioningClientPrivateKeyPem = "fleet/provisioning/client/private/key.pem";
