@@ -3,6 +3,8 @@
 
 #include <StandardDefines.h>
 #include "IConnectionDetailsProvider.h"
+#include "../repository/FleetProvisioningProfileRepository.h"
+#include "../repository/DeviceIdentityProfileRepository.h"
 
 /* @Component */
 class ConnectionDetailsProvider final : public IConnectionDetailsProvider {

@@ -32,7 +32,6 @@ class DeviceService : public IDeviceService {
     Private mutable std::mutex mutex_;
 
     Public Void Refresh() override {
-
         std::lock_guard<std::mutex> lock(mutex_);
         serialNumber = connectionDetailsProvider->GetSerialNumber();
         deviceSecret = connectionDetailsProvider->GetDeviceSecret();
