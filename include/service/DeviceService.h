@@ -14,7 +14,7 @@ class DeviceService : public IDeviceService {
     Public Virtual ~DeviceService() = default;
 
     /* @Autowired */
-    Private ConnectionDetailsProviderPtr connectionDetailsProvider;
+    Private IConnectionDetailsProviderPtr connectionDetailsProvider;
 
     /* @Autowired */
     Private FleetProvisioningProfileRepositoryPtr fleetProvisioningProfileRepository;
