@@ -25,5 +25,4 @@ class FleetProvisioningProfileData {
     Public StdString provisionRejectedTopic;
 };
 
-
 #endif // FLEETPROVISIONINGPROFILEDATA_H
