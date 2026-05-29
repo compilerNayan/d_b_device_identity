@@ -7,105 +7,147 @@
 /* @Component */
 class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
 
-    Public ConnectionDetailsProvider() {}
+    Public ConnectionDetailsProvider() {
+        Refresh();
+    }
 
     Public StdString GetSerialNumber() const override {
-        return "1234";
+        std::lock_guard<std::mutex> lock(mutex_);
+        return serialNumber;
+    }
+
+    Public StdString GetDeviceSecret() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return deviceSecret;
+    }
+
+    Public StdString GetFirmwareVersion() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return firmwareVersion;
     }
 
     Public StdString GetDeviceType() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return deviceType;
     }
 
     Public StdString GetTenantId() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return tenantId;
     }
 
     Public StdString GetThingName() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return thingName;
     }
 
     Public StdString GetFleetProvisioningMqttEndpoint() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return fleetProvisioningMqttEndpoint;
     }
 
     Public StdString GetFleetProvisioningTemplateName() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return fleetProvisioningTemplateName;
     }
 
     Public StdString GetFleetProvisioningCaCertificatePem() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return fleetProvisioningCaCertificatePem;
     }
 
     Public StdString GetFleetProvisioningClientCertificatePem() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return fleetProvisioningClientCertificatePem;
     }
 
     Public StdString GetFleetProvisioningClientPrivateKeyPem() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return fleetProvisioningClientPrivateKeyPem;
     }
 
     Public StdString GetFleetProvisioningCreateKeysRequestTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return fleetProvisioningCreateKeysRequestTopic;
     }
 
     Public StdString GetFleetProvisioningCreateKeysAcceptedTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return fleetProvisioningCreateKeysAcceptedTopic;
     }
 
     Public StdString GetFleetProvisioningCreateKeysRejectedTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return fleetProvisioningCreateKeysRejectedTopic;
     }
 
     Public StdString GetFleetProvisioningProvisionRequestTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return fleetProvisioningProvisionRequestTopic;
     }
 
     Public StdString GetFleetProvisioningProvisionAcceptedTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return fleetProvisioningProvisionAcceptedTopic;
     }
 
     Public StdString GetFleetProvisioningProvisionRejectedTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return fleetProvisioningProvisionRejectedTopic;
     }
 
+    Public Bool IsDeviceIdentityProfilePresent() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return isDeviceIdentityProfilePresent;
+    }
+
     Public StdString GetDeviceIdentityMqttEndpoint() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return deviceIdentityMqttEndpoint;
     }
 
     Public StdString GetDeviceIdentityCaCertificatePem() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return deviceIdentityCaCertificatePem;
     }
 
     Public StdString GetDeviceIdentityClientCertificatePem() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return deviceIdentityClientCertificatePem;
     }
 
     Public StdString GetDeviceIdentityClientPrivateKeyPem() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return deviceIdentityClientPrivateKeyPem;
     }
 
     Public StdString GetDeviceIdentityPublishTopicsStatusTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return deviceIdentityPublishTopicsStatusTopic;
     }
 
     Public StdString GetDeviceIdentityPublishTopicsTelemetryTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return deviceIdentityPublishTopicsTelemetryTopic;
     }
 
     Public StdString GetDeviceIdentityPublishTopicsLogsTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return deviceIdentityPublishTopicsLogsTopic;
     }
 
     Public StdString GetDeviceIdentityPublishTopicsEventsTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return deviceIdentityPublishTopicsEventsTopic;
     }
 
     Public StdString GetDeviceIdentitySubscribeTopicsCommandTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         return deviceIdentitySubscribeTopicsCommandTopic;
     }
 
     Public Void Refresh() override {
+        std::lock_guard<std::mutex> lock(mutex_);
         RefreshFleetProvisioningProfile();
         RefreshDeviceIdentityProfile();
     }
@@ -161,6 +203,7 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
     Private Void RefreshDeviceIdentityProfile() {
         Val deviceIdentityProfileEntityOpt = deviceIdentityProfileRepository->FindFirst();
         if (deviceIdentityProfileEntityOpt.has_value()) {
+            isDeviceIdentityProfilePresent = true;
             Val deviceIdentityProfileEntity = deviceIdentityProfileEntityOpt.value();
 
             if (deviceIdentityProfileEntity.mqttEndpoint.has_value()) deviceIdentityMqttEndpoint = deviceIdentityProfileEntity.mqttEndpoint.value();
@@ -185,6 +228,8 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
             if (deviceIdentityProfileEntity.subscribeTopicsFeatureFlagTopic.has_value()) deviceIdentitySubscribeTopicsFeatureFlagTopic = deviceIdentityTopicsPrefix + "/feature/flag";
         }
     }
+
+    std::lock_guard<std::mutex> lock(mutex_);
 
     Private StdString fleetProvisioningMqttEndpoint = "mqtts://a2hlcpmplecdfa-ats.iot.us-east-1.amazonaws.com";
     Private StdString fleetProvisioningTemplateName = "SomeTemplateName";
@@ -219,10 +264,12 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
 
     Private StdString deviceIdentityTopicsPrefix = tenantId + "/" + deviceType + "/" + thingName;
 
-    Private StdString deviceIdentityMqttEndpoint = "mqtts://a2hlcpmplecdfa-ats.iot.us-east-1.amazonaws.com";
-    Private StdString deviceIdentityCaCertificatePem = "device/identity/ca/certificate.pem";
-    Private StdString deviceIdentityClientCertificatePem = "device/identity/client/certificate.pem";
-    Private StdString deviceIdentityClientPrivateKeyPem = "device/identity/client/private/key.pem";
+    Private Bool isDeviceIdentityProfilePresent = false;
+
+    Private StdString deviceIdentityMqttEndpoint;
+    Private StdString deviceIdentityCaCertificatePem; 
+    Private StdString deviceIdentityClientCertificatePem; 
+    Private StdString deviceIdentityClientPrivateKeyPem; 
 
     Private StdString deviceIdentityPublishTopicsStatusTopic = deviceIdentityTopicsPrefix + "/status";
     Private StdString deviceIdentityPublishTopicsTelemetryTopic = deviceIdentityTopicsPrefix + "/telemetry";

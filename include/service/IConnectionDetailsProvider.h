@@ -8,6 +8,9 @@ class IConnectionDetailsProvider {
     Public Virtual ~IConnectionDetailsProvider() = default;
 
     Public Virtual StdString GetSerialNumber() const = 0;
+    Public Virtual StdString GetDeviceSecret() const = 0;
+    Public Virtual StdString GetFirmwareVersion() const = 0;
+
     Public Virtual StdString GetDeviceType() const = 0;
     Public Virtual StdString GetTenantId() const = 0;
     Public Virtual StdString GetThingName() const = 0;
