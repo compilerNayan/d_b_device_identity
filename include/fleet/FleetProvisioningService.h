@@ -114,6 +114,22 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private StdString awsCaCertificatePem;
     Private StdString ownershipToken;
     Private StdString thingName;
+    Private StdString pendingTenantId;
+
+    // Parsing buffers (heap-backed via singleton; not on mqtt_task stack)
+    Private Char ownershipBuf[768];
+    Private Char certIdBuf[128];
+    Private Char keyEscBuf[4096];
+    Private Char certEscBuf[4096];
+    Private Char keyPemBuf[4096];
+    Private Char certPemBuf[4096];
+
+    Private Static Void EnrollmentCompleteTask(Void* arg) {
+        Var self = static_cast<FleetProvisioningService*>(arg);
+        self->SaveReceivedCredentials(self->pendingTenantId);
+        self->CloseConnection();
+        vTaskDelete(nullptr);
+    }
 
     Private bool json_extract_string(const char *json, const char *key, char *out, size_t out_len) {
         char pattern[64];
@@ -163,6 +179,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
         mqtt_cfg.credentials.authentication.key = fpProfile.clientPrivateKeyPem.c_str();
         mqtt_cfg.buffer.size = 8192;
         mqtt_cfg.buffer.out_size = 8192;
+        mqtt_cfg.task.stack_size = 8192;
 
         mqttClient = esp_mqtt_client_init(&mqtt_cfg);
         esp_mqtt_client_register_event(mqttClient, MQTT_EVENT_ANY, MqttEventHandler, this);
@@ -188,16 +205,9 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private Void HandleCreateKeysAccepted(CChar* payload, Int len) {
         std::lock_guard<std::mutex> lock(mutex_);
         logger->Info(Tag::Untagged, "CreateKeysAndCertificate ACCEPTED");
-    
-        // Copy payload into a buffer
+
         StdString payloadStr(payload, len);
-    
-        // Extract fields (using same helpers as in your C code)
-        Char ownershipBuf[768];
-        Char certIdBuf[128];
-        Char keyEsc[4096];
-        Char certEsc[4096];
-    
+
         if (!json_extract_string(payloadStr.c_str(), "certificateOwnershipToken", ownershipBuf, sizeof(ownershipBuf))) {
             logger->Error(Tag::Untagged, "Missing certificateOwnershipToken");
             return;
@@ -206,30 +216,25 @@ class FleetProvisioningService : public IFleetProvisioningService {
             logger->Error(Tag::Untagged, "Missing certificateId");
             return;
         }
-        if (!json_extract_string(payloadStr.c_str(), "privateKey", keyEsc, sizeof(keyEsc))) {
+        if (!json_extract_string(payloadStr.c_str(), "privateKey", keyEscBuf, sizeof(keyEscBuf))) {
             logger->Error(Tag::Untagged, "Missing privateKey");
             return;
         }
-        if (!json_extract_string(payloadStr.c_str(), "certificatePem", certEsc, sizeof(certEsc))) {
+        if (!json_extract_string(payloadStr.c_str(), "certificatePem", certEscBuf, sizeof(certEscBuf))) {
             logger->Error(Tag::Untagged, "Missing certificatePem");
             return;
         }
-    
-        // Unescape JSON strings into PEM format
-        Char keyPem[4096];
-        Char certPem[4096];
-        unescape_json_to_pem(keyEsc, keyPem, sizeof(keyPem));
-        unescape_json_to_pem(certEsc, certPem, sizeof(certPem));
-    
-        // Save into class members
-        ownershipToken     = ownershipBuf;
-        devicePrivateKeyPem = keyPem;
-        awsDeviceCertPem    = certPem;
-    
+
+        unescape_json_to_pem(keyEscBuf, keyPemBuf, sizeof(keyPemBuf));
+        unescape_json_to_pem(certEscBuf, certPemBuf, sizeof(certPemBuf));
+
+        ownershipToken      = ownershipBuf;
+        devicePrivateKeyPem = keyPemBuf;
+        awsDeviceCertPem    = certPemBuf;
+
         logger->Info(Tag::Untagged, "certificateId: " + StdString(certIdBuf));
         logger->Info(Tag::Untagged, "certificateOwnershipToken: " + ownershipToken);
-    
-        // Continue with RegisterThing
+
         PublishProvisionRequest();
     }
 
@@ -244,10 +249,8 @@ class FleetProvisioningService : public IFleetProvisioningService {
     }
 
     Private Void HandleProvisionAccepted(CChar* payload, Int len) {
-        std::lock_guard<std::mutex> lock(mutex_);
-    
         StdString payloadStr(payload, len);
-    
+
         Char thingNameBuf[128];
         if (!json_extract_string(payloadStr.c_str(), "thingName", thingNameBuf, sizeof(thingNameBuf))) {
             logger->Error(Tag::Untagged, "Missing thingName in provision response");
@@ -259,17 +262,27 @@ class FleetProvisioningService : public IFleetProvisioningService {
             logger->Error(Tag::Untagged, "Missing tenantId in provision response");
             return;
         }
-    
+
         logger->Info(Tag::Untagged, "========== ENROLLMENT SUCCESS ==========");
         logger->Info(Tag::Untagged, "thingName: " + StdString(thingNameBuf));
         logger->Info(Tag::Untagged, "SerialNumber: " + deviceService->GetSerialNumber());
         logger->Info(Tag::Untagged, "tenantId: " + StdString(tenantIdBuf));
 
-        // At this point, devicePrivateKeyPem and awsDeviceCertPem are already populated
-        SaveReceivedCredentials(StdString(tenantIdBuf));
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            pendingTenantId = StdString(tenantIdBuf);
+        }
+
+        // SPIFFS writes and MQTT teardown must not run on mqtt_task (6 KB stack).
+        if (xTaskCreate(EnrollmentCompleteTask, "enroll_save", 8192, this, 5, nullptr) != pdPASS) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            status = EnrollmentStatus::Failed_Provision;
+            logger->Error(Tag::Untagged, "Failed to schedule credential save task");
+        }
     }
-    
-    Private Void SaveReceivedCredentials(StdString tenantId) {
+
+    Private Void SaveReceivedCredentials(const StdString& tenantId) {
+        logger->Info(Tag::Untagged, "Saving received credentials for tenantId: " + tenantId);
 
         DeviceIdentityProfileDto identityDto;
         identityDto.clientCertificatePem = Optional<StdString>(awsDeviceCertPem);
@@ -278,13 +291,14 @@ class FleetProvisioningService : public IFleetProvisioningService {
 
         deviceService->SetDeviceIdentityProfile(identityDto);
 
-        status = EnrollmentStatus::Success;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            status = EnrollmentStatus::Success;
+        }
 
         logger->Info(Tag::Untagged,
                      "Saved device identity profile for serial=" +
                      deviceService->GetSerialNumber());
-
-        CloseConnection();
     }
 
     Private Static Void MqttEventHandler(Void* handler_args, esp_event_base_t base,
