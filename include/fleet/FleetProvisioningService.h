@@ -263,7 +263,6 @@ class FleetProvisioningService : public IFleetProvisioningService {
     }
     
     Private Void SaveReceivedCredentials() {
-        std::lock_guard<std::mutex> lock(mutex_);
 
         DeviceIdentityProfileDto identityDto;
         identityDto.clientCertificatePem = Optional<StdString>(awsDeviceCertPem);

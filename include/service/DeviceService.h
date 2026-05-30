@@ -46,7 +46,8 @@ class DeviceService : public IDeviceService {
         this->fleetProvisioningProfile.createKeysRejectedTopic = connectionDetailsProvider->GetFleetProvisioningCreateKeysRejectedTopic();
         this->fleetProvisioningProfile.provisionRequestTopic = connectionDetailsProvider->GetFleetProvisioningProvisionRequestTopic();
         this->fleetProvisioningProfile.provisionAcceptedTopic = connectionDetailsProvider->GetFleetProvisioningProvisionAcceptedTopic();
-
+        this->fleetProvisioningProfile.provisionRejectedTopic = connectionDetailsProvider->GetFleetProvisioningProvisionRejectedTopic();
+        
         if(connectionDetailsProvider->IsDeviceIdentityProfilePresent()) {
             this->deviceIdentityProfile->mqttEndpoint = connectionDetailsProvider->GetDeviceIdentityMqttEndpoint();
             this->deviceIdentityProfile->caCertificatePem = connectionDetailsProvider->GetDeviceIdentityCaCertificatePem();
