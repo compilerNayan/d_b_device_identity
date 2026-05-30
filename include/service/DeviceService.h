@@ -47,11 +47,14 @@ class DeviceService : public IDeviceService {
         this->fleetProvisioningProfile.provisionRequestTopic = connectionDetailsProvider->GetFleetProvisioningProvisionRequestTopic();
         this->fleetProvisioningProfile.provisionAcceptedTopic = connectionDetailsProvider->GetFleetProvisioningProvisionAcceptedTopic();
         this->fleetProvisioningProfile.provisionRejectedTopic = connectionDetailsProvider->GetFleetProvisioningProvisionRejectedTopic();
-        
+
         if(connectionDetailsProvider->IsDeviceIdentityProfilePresent()) {
+            this->deviceIdentityProfile = std::make_optional<DeviceIdentityProfileData>();
             this->deviceIdentityProfile->mqttEndpoint = connectionDetailsProvider->GetDeviceIdentityMqttEndpoint();
             this->deviceIdentityProfile->caCertificatePem = connectionDetailsProvider->GetDeviceIdentityCaCertificatePem();
-            
+            this->deviceIdentityProfile->clientCertificatePem = connectionDetailsProvider->GetDeviceIdentityClientCertificatePem();
+            this->deviceIdentityProfile->clientPrivateKeyPem = connectionDetailsProvider->GetDeviceIdentityClientPrivateKeyPem();
+
             this->deviceIdentityProfile->publishTopics.statusTopic = connectionDetailsProvider->GetDeviceIdentityPublishTopicsStatusTopic();
             this->deviceIdentityProfile->publishTopics.telemetryTopic = connectionDetailsProvider->GetDeviceIdentityPublishTopicsTelemetryTopic();
             this->deviceIdentityProfile->publishTopics.logsTopic = connectionDetailsProvider->GetDeviceIdentityPublishTopicsLogsTopic();
@@ -91,29 +94,29 @@ class DeviceService : public IDeviceService {
         FleetProvisioningProfile fleetProvisioningProfileEntity;
         fleetProvisioningProfileEntity.id = 1;
 
-        fleetProvisioningProfileEntity.mqttEndpoint = fleetProvisioningProfileDto.mqttEndpoint.value();
+        fleetProvisioningProfileEntity.mqttEndpoint = fleetProvisioningProfileDto.mqttEndpoint;
 
-        fleetProvisioningProfileEntity.caCertificatePem = fleetProvisioningProfileDto.caCertificatePem.value();
-        fleetProvisioningProfileEntity.clientCertificatePem = fleetProvisioningProfileDto.clientCertificatePem.value();
-        fleetProvisioningProfileEntity.clientPrivateKeyPem = fleetProvisioningProfileDto.clientPrivateKeyPem.value();
+        fleetProvisioningProfileEntity.caCertificatePem = fleetProvisioningProfileDto.caCertificatePem;
+        fleetProvisioningProfileEntity.clientCertificatePem = fleetProvisioningProfileDto.clientCertificatePem;
+        fleetProvisioningProfileEntity.clientPrivateKeyPem = fleetProvisioningProfileDto.clientPrivateKeyPem;
 
-        fleetProvisioningProfileEntity.templateName = fleetProvisioningProfileDto.templateName.value();
+        fleetProvisioningProfileEntity.templateName = fleetProvisioningProfileDto.templateName;
 
-        fleetProvisioningProfileEntity.createKeysRequestTopic = fleetProvisioningProfileDto.createKeysRequestTopic.value();
-        fleetProvisioningProfileEntity.createKeysAcceptedTopic = fleetProvisioningProfileDto.createKeysAcceptedTopic.value();
-        fleetProvisioningProfileEntity.createKeysRejectedTopic = fleetProvisioningProfileDto.createKeysRejectedTopic.value();
+        fleetProvisioningProfileEntity.createKeysRequestTopic = fleetProvisioningProfileDto.createKeysRequestTopic;
+        fleetProvisioningProfileEntity.createKeysAcceptedTopic = fleetProvisioningProfileDto.createKeysAcceptedTopic;
+        fleetProvisioningProfileEntity.createKeysRejectedTopic = fleetProvisioningProfileDto.createKeysRejectedTopic;
 
-        fleetProvisioningProfileEntity.provisionRequestTopicPrefix = fleetProvisioningProfileDto.provisionRequestTopicPrefix.value();
-        fleetProvisioningProfileEntity.provisionRequestTopicSuffix = fleetProvisioningProfileDto.provisionRequestTopicSuffix.value();
-        fleetProvisioningProfileEntity.provisionRequestTopic = fleetProvisioningProfileDto.provisionRequestTopic.value();
+        fleetProvisioningProfileEntity.provisionRequestTopicPrefix = fleetProvisioningProfileDto.provisionRequestTopicPrefix;
+        fleetProvisioningProfileEntity.provisionRequestTopicSuffix = fleetProvisioningProfileDto.provisionRequestTopicSuffix;
+        fleetProvisioningProfileEntity.provisionRequestTopic = fleetProvisioningProfileDto.provisionRequestTopic;
 
-        fleetProvisioningProfileEntity.provisionAcceptedTopicPrefix = fleetProvisioningProfileDto.provisionAcceptedTopicPrefix.value();
-        fleetProvisioningProfileEntity.provisionAcceptedTopicSuffix = fleetProvisioningProfileDto.provisionAcceptedTopicSuffix.value();
-        fleetProvisioningProfileEntity.provisionAcceptedTopic = fleetProvisioningProfileDto.provisionAcceptedTopic.value();
+        fleetProvisioningProfileEntity.provisionAcceptedTopicPrefix = fleetProvisioningProfileDto.provisionAcceptedTopicPrefix;
+        fleetProvisioningProfileEntity.provisionAcceptedTopicSuffix = fleetProvisioningProfileDto.provisionAcceptedTopicSuffix;
+        fleetProvisioningProfileEntity.provisionAcceptedTopic = fleetProvisioningProfileDto.provisionAcceptedTopic;
 
-        fleetProvisioningProfileEntity.provisionRejectedTopicPrefix = fleetProvisioningProfileDto.provisionRejectedTopicPrefix.value();
-        fleetProvisioningProfileEntity.provisionRejectedTopicSuffix = fleetProvisioningProfileDto.provisionRejectedTopicSuffix.value();
-        fleetProvisioningProfileEntity.provisionRejectedTopic = fleetProvisioningProfileDto.provisionRejectedTopic.value();
+        fleetProvisioningProfileEntity.provisionRejectedTopicPrefix = fleetProvisioningProfileDto.provisionRejectedTopicPrefix;
+        fleetProvisioningProfileEntity.provisionRejectedTopicSuffix = fleetProvisioningProfileDto.provisionRejectedTopicSuffix;
+        fleetProvisioningProfileEntity.provisionRejectedTopic = fleetProvisioningProfileDto.provisionRejectedTopic;
         return fleetProvisioningProfileEntity;
     }
 
@@ -122,11 +125,11 @@ class DeviceService : public IDeviceService {
 
         deviceIdentityProfileEntity.id = 1;
 
-        deviceIdentityProfileEntity.mqttEndpoint = deviceIdentityProfileDto.mqttEndpoint.value();
+        deviceIdentityProfileEntity.mqttEndpoint = deviceIdentityProfileDto.mqttEndpoint;
 
-        deviceIdentityProfileEntity.tenantId = deviceIdentityProfileDto.tenantId.value();
-        deviceIdentityProfileEntity.deviceType = deviceIdentityProfileDto.deviceType.value();
-        deviceIdentityProfileEntity.thingName = deviceIdentityProfileDto.thingName.value();
+        deviceIdentityProfileEntity.tenantId = deviceIdentityProfileDto.tenantId;
+        deviceIdentityProfileEntity.deviceType = deviceIdentityProfileDto.deviceType;
+        deviceIdentityProfileEntity.thingName = deviceIdentityProfileDto.thingName;
 
         deviceIdentityProfileEntity.caCertificatePem = deviceIdentityProfileDto.caCertificatePem;
         deviceIdentityProfileEntity.clientCertificatePem = deviceIdentityProfileDto.clientCertificatePem;
@@ -138,7 +141,12 @@ class DeviceService : public IDeviceService {
             publishTopicsEntity.telemetryTopic = deviceIdentityProfileDto.publishTopics->telemetryTopic;
             publishTopicsEntity.logsTopic = deviceIdentityProfileDto.publishTopics->logsTopic;
             publishTopicsEntity.eventsTopic = deviceIdentityProfileDto.publishTopics->eventsTopic;
-            deviceIdentityProfileEntity.publishTopics = publishTopicsEntity;
+            if(publishTopicsEntity.statusTopic.has_value() ||
+                publishTopicsEntity.telemetryTopic.has_value() ||
+                publishTopicsEntity.logsTopic.has_value() ||
+                publishTopicsEntity.eventsTopic.has_value()) {
+                    deviceIdentityProfileEntity.publishTopics = publishTopicsEntity;
+            }
         }
 
         if(deviceIdentityProfileDto.subscribeTopics.has_value()) {
@@ -146,7 +154,11 @@ class DeviceService : public IDeviceService {
             subscribeTopicsEntity.commandTopic = deviceIdentityProfileDto.subscribeTopics->commandTopic;
             subscribeTopicsEntity.otaUpdateTopic = deviceIdentityProfileDto.subscribeTopics->otaUpdateTopic;
             subscribeTopicsEntity.featureFlagTopic = deviceIdentityProfileDto.subscribeTopics->featureFlagTopic;
-            deviceIdentityProfileEntity.subscribeTopics = subscribeTopicsEntity;
+            if(subscribeTopicsEntity.commandTopic.has_value() ||
+                subscribeTopicsEntity.otaUpdateTopic.has_value() ||
+                subscribeTopicsEntity.featureFlagTopic.has_value()) {
+                    deviceIdentityProfileEntity.subscribeTopics = subscribeTopicsEntity;
+            }
         }
         return deviceIdentityProfileEntity;
     }
