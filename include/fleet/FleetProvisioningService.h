@@ -253,20 +253,28 @@ class FleetProvisioningService : public IFleetProvisioningService {
             logger->Error(Tag::Untagged, "Missing thingName in provision response");
             return;
         }
+
+        Char tenantIdBuf[128];
+        if (!json_extract_string(payloadStr.c_str(), "tenantId", tenantIdBuf, sizeof(tenantIdBuf))) {
+            logger->Error(Tag::Untagged, "Missing tenantId in provision response");
+            return;
+        }
     
         logger->Info(Tag::Untagged, "========== ENROLLMENT SUCCESS ==========");
         logger->Info(Tag::Untagged, "thingName: " + StdString(thingNameBuf));
         logger->Info(Tag::Untagged, "SerialNumber: " + deviceService->GetSerialNumber());
-    
+        logger->Info(Tag::Untagged, "tenantId: " + StdString(tenantIdBuf));
+
         // At this point, devicePrivateKeyPem and awsDeviceCertPem are already populated
-        SaveReceivedCredentials();
+        SaveReceivedCredentials(StdString(tenantIdBuf));
     }
     
-    Private Void SaveReceivedCredentials() {
+    Private Void SaveReceivedCredentials(StdString tenantId) {
 
         DeviceIdentityProfileDto identityDto;
         identityDto.clientCertificatePem = Optional<StdString>(awsDeviceCertPem);
         identityDto.clientPrivateKeyPem  = Optional<StdString>(devicePrivateKeyPem);
+        identityDto.tenantId = Optional<StdString>(tenantId);
 
         deviceService->SetDeviceIdentityProfile(identityDto);
 
