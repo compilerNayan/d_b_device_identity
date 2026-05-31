@@ -219,29 +219,75 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
             isDeviceIdentityProfilePresent = true;
             Val deviceIdentityProfileEntity = deviceIdentityProfileEntityOpt.value();
 
-            if (deviceIdentityProfileEntity.mqttEndpoint.has_value()) deviceIdentityMqttEndpoint = deviceIdentityProfileEntity.mqttEndpoint.value();
+            deviceIdentityMqttEndpoint = fleetProvisioningMqttEndpoint;
+            deviceIdentityCaCertificatePem = fleetProvisioningCaCertificatePem; 
 
-            if (deviceIdentityProfileEntity.tenantId.has_value()) tenantId = deviceIdentityProfileEntity.tenantId.value();
-            if (deviceIdentityProfileEntity.deviceType.has_value()) deviceType = deviceIdentityProfileEntity.deviceType.value();
-            if (deviceIdentityProfileEntity.thingName.has_value()) thingName = deviceIdentityProfileEntity.thingName.value();
+            if (deviceIdentityProfileEntity.mqttEndpoint.has_value() && !deviceIdentityProfileEntity.mqttEndpoint.value().empty()) {
+                deviceIdentityMqttEndpoint = deviceIdentityProfileEntity.mqttEndpoint.value();
+            }
 
-            if (deviceIdentityProfileEntity.caCertificatePem.has_value()) deviceIdentityCaCertificatePem = deviceIdentityProfileEntity.caCertificatePem.value();
-            if (deviceIdentityProfileEntity.clientCertificatePem.has_value()) deviceIdentityClientCertificatePem = deviceIdentityProfileEntity.clientCertificatePem.value();
-            if (deviceIdentityProfileEntity.clientPrivateKeyPem.has_value()) deviceIdentityClientPrivateKeyPem = deviceIdentityProfileEntity.clientPrivateKeyPem.value();
+            if (deviceIdentityProfileEntity.tenantId.has_value() && !deviceIdentityProfileEntity.tenantId.value().empty()) {
+                tenantId = deviceIdentityProfileEntity.tenantId.value();
+            }
 
-            StdString deviceIdentityTopicsPrefix = tenantId + "/" + deviceType + "/" + thingName;
+            if (deviceIdentityProfileEntity.thingName.has_value() && !deviceIdentityProfileEntity.thingName.value().empty()) {
+                thingName = deviceIdentityProfileEntity.thingName.value();
+            }
+
+            if (deviceIdentityProfileEntity.deviceType.has_value() && !deviceIdentityProfileEntity.deviceType.value().empty()) {
+                deviceType = deviceIdentityProfileEntity.deviceType.value();
+            }
+
+            deviceIdentityTopicsPrefix = tenantId + "/" + deviceType + "/" + thingName;
+
+            deviceIdentityPublishTopicsStatusTopic = deviceIdentityTopicsPrefix + "/status";
+            deviceIdentityPublishTopicsTelemetryTopic = deviceIdentityTopicsPrefix + "/telemetry";
+            deviceIdentityPublishTopicsLogsTopic = deviceIdentityTopicsPrefix + "/logs";
+            deviceIdentityPublishTopicsEventsTopic = deviceIdentityTopicsPrefix + "/events";
+        
+            deviceIdentitySubscribeTopicsCommandTopic = deviceIdentityTopicsPrefix + "/command";
+            deviceIdentitySubscribeTopicsOtaUpdateTopic = deviceIdentityTopicsPrefix + "/ota/update";
+            deviceIdentitySubscribeTopicsFeatureFlagTopic = deviceIdentityTopicsPrefix + "/feature/flag";
+
+            if (deviceIdentityProfileEntity.thingName.has_value() && !deviceIdentityProfileEntity.thingName.value().empty()) {
+                thingName = deviceIdentityProfileEntity.thingName.value();
+            }
+
+            if (deviceIdentityProfileEntity.caCertificatePem.has_value() && !deviceIdentityProfileEntity.caCertificatePem.value().empty()) {
+                deviceIdentityCaCertificatePem = deviceIdentityProfileEntity.caCertificatePem.value();
+            }
+            if (deviceIdentityProfileEntity.clientCertificatePem.has_value() && !deviceIdentityProfileEntity.clientCertificatePem.value().empty()) {
+                deviceIdentityClientCertificatePem = deviceIdentityProfileEntity.clientCertificatePem.value();
+            }
+            if (deviceIdentityProfileEntity.clientPrivateKeyPem.has_value() && !deviceIdentityProfileEntity.clientPrivateKeyPem.value().empty()) {
+                deviceIdentityClientPrivateKeyPem = deviceIdentityProfileEntity.clientPrivateKeyPem.value();
+            }
 
             if(deviceIdentityProfileEntity.publishTopics.has_value()) {
-                if(deviceIdentityProfileEntity.publishTopics->statusTopic.has_value()) deviceIdentityPublishTopicsStatusTopic = deviceIdentityTopicsPrefix + "/status";
-                if(deviceIdentityProfileEntity.publishTopics->telemetryTopic.has_value()) deviceIdentityPublishTopicsTelemetryTopic = deviceIdentityTopicsPrefix + "/telemetry";
-                if(deviceIdentityProfileEntity.publishTopics->logsTopic.has_value()) deviceIdentityPublishTopicsLogsTopic = deviceIdentityTopicsPrefix + "/logs";
-                if(deviceIdentityProfileEntity.publishTopics->eventsTopic.has_value()) deviceIdentityPublishTopicsEventsTopic = deviceIdentityTopicsPrefix + "/events";
+                if(deviceIdentityProfileEntity.publishTopics->statusTopic.has_value() && !deviceIdentityProfileEntity.publishTopics->statusTopic.value().empty()) {
+                    deviceIdentityPublishTopicsStatusTopic = deviceIdentityTopicsPrefix + deviceIdentityProfileEntity.publishTopics->statusTopic.value();
+                }
+                if(deviceIdentityProfileEntity.publishTopics->telemetryTopic.has_value() && !deviceIdentityProfileEntity.publishTopics->telemetryTopic.value().empty()) {
+                    deviceIdentityPublishTopicsTelemetryTopic = deviceIdentityTopicsPrefix + deviceIdentityProfileEntity.publishTopics->telemetryTopic.value();
+                }
+                if(deviceIdentityProfileEntity.publishTopics->logsTopic.has_value() && !deviceIdentityProfileEntity.publishTopics->logsTopic.value().empty()) {
+                    deviceIdentityPublishTopicsLogsTopic = deviceIdentityTopicsPrefix + deviceIdentityProfileEntity.publishTopics->logsTopic.value();
+                }
+                if(deviceIdentityProfileEntity.publishTopics->eventsTopic.has_value() && !deviceIdentityProfileEntity.publishTopics->eventsTopic.value().empty()) {
+                    deviceIdentityPublishTopicsEventsTopic = deviceIdentityTopicsPrefix + deviceIdentityProfileEntity.publishTopics->eventsTopic.value();
+                }
             }
 
             if(deviceIdentityProfileEntity.subscribeTopics.has_value()) {
-                if(deviceIdentityProfileEntity.subscribeTopics->commandTopic.has_value()) deviceIdentitySubscribeTopicsCommandTopic = deviceIdentityTopicsPrefix + "/command";
-                if(deviceIdentityProfileEntity.subscribeTopics->otaUpdateTopic.has_value()) deviceIdentitySubscribeTopicsOtaUpdateTopic = deviceIdentityTopicsPrefix + "/ota/update";
-                if(deviceIdentityProfileEntity.subscribeTopics->featureFlagTopic.has_value()) deviceIdentitySubscribeTopicsFeatureFlagTopic = deviceIdentityTopicsPrefix + "/feature/flag";
+                if(deviceIdentityProfileEntity.subscribeTopics->commandTopic.has_value() && !deviceIdentityProfileEntity.subscribeTopics->commandTopic.value().empty()) {
+                    deviceIdentitySubscribeTopicsCommandTopic = deviceIdentityTopicsPrefix + deviceIdentityProfileEntity.subscribeTopics->commandTopic.value();
+                }
+                if(deviceIdentityProfileEntity.subscribeTopics->otaUpdateTopic.has_value() && !deviceIdentityProfileEntity.subscribeTopics->otaUpdateTopic.value().empty()) {
+                    deviceIdentitySubscribeTopicsOtaUpdateTopic = deviceIdentityTopicsPrefix + deviceIdentityProfileEntity.subscribeTopics->otaUpdateTopic.value();
+                }
+                if(deviceIdentityProfileEntity.subscribeTopics->featureFlagTopic.has_value() && !deviceIdentityProfileEntity.subscribeTopics->featureFlagTopic.value().empty()) {
+                    deviceIdentitySubscribeTopicsFeatureFlagTopic = deviceIdentityTopicsPrefix + deviceIdentityProfileEntity.subscribeTopics->featureFlagTopic.value();
+                }
             }
         } 
     }
@@ -346,8 +392,8 @@ ok5rte626z1PeQc30Rtf45RMIiKla3iGOTsIX02gipx9a7vSyQg=
 
     Private Bool isDeviceIdentityProfilePresent = false;
 
-    Private StdString deviceIdentityMqttEndpoint;
-    Private StdString deviceIdentityCaCertificatePem; 
+    Private StdString deviceIdentityMqttEndpoint = fleetProvisioningMqttEndpoint;
+    Private StdString deviceIdentityCaCertificatePem = fleetProvisioningCaCertificatePem; 
     Private StdString deviceIdentityClientCertificatePem; 
     Private StdString deviceIdentityClientPrivateKeyPem; 
 

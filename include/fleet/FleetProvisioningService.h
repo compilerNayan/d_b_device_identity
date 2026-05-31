@@ -287,6 +287,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
         DeviceIdentityProfileDto identityDto;
         identityDto.clientCertificatePem = Optional<StdString>(awsDeviceCertPem);
         identityDto.clientPrivateKeyPem  = Optional<StdString>(devicePrivateKeyPem);
+        identityDto.thingName = Optional<StdString>(thingName);
         identityDto.tenantId = Optional<StdString>(tenantId);
 
         deviceService->SetDeviceIdentityProfile(identityDto);
