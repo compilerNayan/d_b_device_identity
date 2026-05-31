@@ -2,8 +2,8 @@
 #define DEVICEIDENTITYPROFILE_H
 
 #include <StandardDefines.h>
-#include "../type/PublishTopics.h"
-#include "../type/SubscribeTopics.h"
+#include "type/PublishTopics.h"
+#include "type/SubscribeTopics.h"
 
 /* @Entity */
 class DeviceIdentityProfile {
