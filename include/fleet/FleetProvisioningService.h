@@ -17,7 +17,7 @@
 #include <mutex>
 
 #include "StandardDefines.h"
-#include "../service/IDeviceService.h"
+#include "server/IDeviceService.h"
 #include "logger/ILogger.h"
 
 #include "IFleetProvisioningService.h"

@@ -1,7 +1,7 @@
 #ifndef DEVICESERVICE_H
 #define DEVICESERVICE_H
 
-#include "IDeviceService.h"
+#include "server/IDeviceService.h"
 #include "../repository/FleetProvisioningProfileRepository.h"
 #include "../repository/DeviceIdentityProfileRepository.h"
 #include "IConnectionDetailsProvider.h"
