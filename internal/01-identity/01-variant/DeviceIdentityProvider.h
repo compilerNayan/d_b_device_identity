@@ -3,6 +3,7 @@
 
 #include <identity/IDeviceIdentityProvider.h>
 
+#include "esp_mac.h"
 #include <StandardDefines.h>
 
 /* @Component */

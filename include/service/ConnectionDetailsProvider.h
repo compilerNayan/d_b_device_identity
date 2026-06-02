@@ -392,7 +392,7 @@ ok5rte626z1PeQc30Rtf45RMIiKla3iGOTsIX02gipx9a7vSyQg=
     Private StdString tenantId = "123";
     Private StdString thingName = "thing";
 
-    Private StdString deviceIdentityTopicsPrefix = tenantId + "/" + deviceType + "/" + thingName;
+    Private StdString deviceIdentityTopicsPrefix;
 
     Private Bool isDeviceIdentityProfilePresent = false;
 
