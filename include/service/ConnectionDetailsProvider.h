@@ -5,6 +5,7 @@
 #include "IConnectionDetailsProvider.h"
 #include "../repository/FleetProvisioningProfileRepository.h"
 #include "../repository/DeviceIdentityProfileRepository.h"
+#include <identity/IDeviceIdentityProvider.h>
 
 /* @Component */
 class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
@@ -15,17 +16,17 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
 
     Public StdString GetSerialNumber() const override {
         std::lock_guard<std::mutex> lock(mutex_);
-        return "1234";
+        return serialNumber;
     }
 
     Public StdString GetDeviceSecret() const override {
         std::lock_guard<std::mutex> lock(mutex_);
-        return "1234";
+        return deviceSecret;
     }
 
     Public StdString GetFirmwareVersion() const override {
         std::lock_guard<std::mutex> lock(mutex_);
-        return "1.0.0";
+        return firmwareVersion;
     }
 
     Public StdString GetDeviceType() const override {
@@ -160,6 +161,10 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
 
     Public Void Refresh() override {
         std::lock_guard<std::mutex> lock(mutex_);
+        serialNumber = deviceIdentityProvider->GetSerialNumber();
+        deviceSecret = deviceIdentityProvider->GetDeviceSecret();
+        firmwareVersion = deviceIdentityProvider->GetFirmwareVersion();
+        deviceType = deviceIdentityProvider->GetDeviceType();
         RefreshFleetProvisioningProfile();
         RefreshDeviceIdentityProfile();
     }
@@ -385,7 +390,6 @@ ok5rte626z1PeQc30Rtf45RMIiKla3iGOTsIX02gipx9a7vSyQg=
     Private FleetProvisioningProfileRepositoryPtr fleetProvisioningProfileRepository;
 
     Private StdString tenantId = "123";
-    Private StdString deviceType = "switch";
     Private StdString thingName = "thing";
 
     Private StdString deviceIdentityTopicsPrefix = tenantId + "/" + deviceType + "/" + thingName;
@@ -408,6 +412,14 @@ ok5rte626z1PeQc30Rtf45RMIiKla3iGOTsIX02gipx9a7vSyQg=
 
     /* @Autowired */
     Private DeviceIdentityProfileRepositoryPtr deviceIdentityProfileRepository;
+
+    /* @Autowired */
+    Private IDeviceIdentityProviderPtr deviceIdentityProvider;
+
+    Private StdString serialNumber;
+    Private StdString deviceSecret;
+    Private StdString deviceType;
+    Private StdString firmwareVersion;
 };
 
 
