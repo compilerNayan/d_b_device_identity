@@ -271,6 +271,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
         {
             std::lock_guard<std::mutex> lock(mutex_);
             pendingTenantId = StdString(tenantIdBuf);
+            thingName = StdString(thingNameBuf);
         }
 
         // SPIFFS writes and MQTT teardown must not run on mqtt_task (6 KB stack).

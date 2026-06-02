@@ -239,10 +239,6 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
                 thingName = deviceIdentityProfileEntity.thingName.value();
             }
 
-            if (deviceIdentityProfileEntity.deviceType.has_value() && !deviceIdentityProfileEntity.deviceType.value().empty()) {
-                deviceType = deviceIdentityProfileEntity.deviceType.value();
-            }
-
             deviceIdentityTopicsPrefix = tenantId + "/" + deviceType + "/" + thingName;
 
             deviceIdentityPublishTopicsStatusTopic = deviceIdentityTopicsPrefix + "/status";
