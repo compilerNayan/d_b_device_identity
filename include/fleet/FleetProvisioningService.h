@@ -56,6 +56,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
         }
 
         fpProfile = deviceService->GetFleetProvisioningProfile();
+        CloseConnection();
         StartMqttClient();
     }
 
@@ -100,6 +101,8 @@ class FleetProvisioningService : public IFleetProvisioningService {
 
     FleetProvisioningProfileData fpProfile;
 
+    Private StdString enrollmentBrokerUri;
+    Private StdString enrollmentBrokerHost;
 
     Private esp_mqtt_client_handle_t mqttClient;
     Private Bool mqttStarted;
@@ -163,7 +166,43 @@ class FleetProvisioningService : public IFleetProvisioningService {
         }
         out[j] = '\0';
     }
-    
+
+    /** Ensures mqtts URI includes explicit port (ESP-TLS requires it for AWS IoT). */
+    Private Static StdString NormalizeMqttUri(const StdString& endpoint) {
+        StdString uri = endpoint;
+        if (uri.find("://") == StdString::npos) {
+            return "mqtts://" + uri + ":8883";
+        }
+        const size_t hostStart = uri.find("://") + 3;
+        const size_t slash = uri.find('/', hostStart);
+        const size_t colon = uri.find(':', hostStart);
+        const Bool hasPort = (colon != StdString::npos && (slash == StdString::npos || colon < slash));
+        if (!hasPort) {
+            if (slash != StdString::npos) {
+                uri.insert(slash, ":8883");
+            } else {
+                uri += ":8883";
+            }
+        }
+        return uri;
+    }
+
+    Private Static Void ParseBrokerHostPort(const StdString& uri, StdString& host, Int& port) {
+        port = 8883;
+        host.clear();
+        const size_t scheme = uri.find("://");
+        const size_t hostStart = (scheme == StdString::npos) ? 0 : scheme + 3;
+        const size_t colon = uri.find(':', hostStart);
+        const size_t slash = uri.find('/', hostStart);
+        if (colon != StdString::npos && (slash == StdString::npos || colon < slash)) {
+            host = uri.substr(hostStart, colon - hostStart);
+            port = atoi(uri.c_str() + colon + 1);
+        } else if (slash != StdString::npos) {
+            host = uri.substr(hostStart, slash - hostStart);
+        } else {
+            host = uri.substr(hostStart);
+        }
+    }
 
     Private Void StartMqttClient() {
         if (mqttStarted) return;
@@ -171,21 +210,43 @@ class FleetProvisioningService : public IFleetProvisioningService {
         enrollmentStarted = false;
         pendingSubscriptions = 0;
 
+        enrollmentBrokerUri = NormalizeMqttUri(fpProfile.mqttEndpoint);
+        Int brokerPort = 8883;
+        ParseBrokerHostPort(enrollmentBrokerUri, enrollmentBrokerHost, brokerPort);
+
         esp_mqtt_client_config_t mqtt_cfg = {};
-        mqtt_cfg.broker.address.uri = fpProfile.mqttEndpoint.c_str();
+        mqtt_cfg.broker.address.hostname = enrollmentBrokerHost.c_str();
+        mqtt_cfg.broker.address.port = brokerPort;
+        mqtt_cfg.broker.address.transport = MQTT_TRANSPORT_OVER_SSL;
         mqtt_cfg.broker.verification.certificate = fpProfile.caCertificatePem.c_str();
         mqtt_cfg.credentials.client_id = deviceService->GetSerialNumber().c_str();
         mqtt_cfg.credentials.authentication.certificate = fpProfile.clientCertificatePem.c_str();
         mqtt_cfg.credentials.authentication.key = fpProfile.clientPrivateKeyPem.c_str();
+        mqtt_cfg.network.disable_auto_reconnect = true;
         mqtt_cfg.buffer.size = 8192;
         mqtt_cfg.buffer.out_size = 8192;
         mqtt_cfg.task.stack_size = 8192;
 
         mqttClient = esp_mqtt_client_init(&mqtt_cfg);
+        if (!mqttClient) {
+            logger->Error(Tag::Untagged,
+                "Enrollment MQTT init failed host=" + enrollmentBrokerHost);
+            mqttStarted = false;
+            return;
+        }
         esp_mqtt_client_register_event(mqttClient, MQTT_EVENT_ANY, MqttEventHandler, this);
-        esp_mqtt_client_start(mqttClient);
+        if (esp_mqtt_client_start(mqttClient) != ESP_OK) {
+            logger->Error(Tag::Untagged,
+                "Enrollment MQTT start failed host=" + enrollmentBrokerHost);
+            esp_mqtt_client_destroy(mqttClient);
+            mqttClient = nullptr;
+            mqttStarted = false;
+            return;
+        }
 
-        logger->Info(Tag::Untagged, "MQTT client started for enrollment");
+        logger->Info(Tag::Untagged,
+            "MQTT client started for enrollment host=" + enrollmentBrokerHost
+            + " port=" + std::to_string(brokerPort));
     }
 
     Private Void SubscribeEnrollmentTopics() {
