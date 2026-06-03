@@ -150,8 +150,12 @@ class FleetProvisioningService : public IFleetProvisioningService {
 
     Private Static Void EnrollmentCompleteTask(Void* arg) {
         Var self = static_cast<FleetProvisioningService*>(arg);
-        self->SaveReceivedCredentials(self->pendingTenantId);
+        const StdString tenantId = self->pendingTenantId;
+        // Tear down enrollment MQTT/TLS before SPIFFS + JSON serialize (needs large heap).
         self->CloseConnection();
+        vTaskDelay(pdMS_TO_TICKS(500));
+        NayanLogWifiAndHeap("enroll_save_after_close");
+        self->SaveReceivedCredentials(tenantId);
         vTaskDelete(nullptr);
     }
 
@@ -360,10 +364,12 @@ class FleetProvisioningService : public IFleetProvisioningService {
             esp_tls_last_error lastErr{};
             esp_tls_error_handle_t errHandle = &lastErr;
             if (esp_tls_get_error_handle(tls, &errHandle) == ESP_OK && errHandle) {
-                printf("[Nayan] TLS probe FAIL fd=%d elapsed_ms=%lu esp_err=0x%x mbedtls=0x%x\n",
+                printf("[Nayan] TLS probe FAIL fd=%d elapsed_ms=%lu esp_err=%d (%s) mbedtls=0x%x flags=0x%x\n",
                     fd, ms,
-                    (unsigned)errHandle->esp_tls_last_esp_err,
-                    (unsigned)errHandle->esp_tls_stack_err);
+                    (int)errHandle->last_error,
+                    esp_err_to_name(errHandle->last_error),
+                    (unsigned)errHandle->esp_tls_error_code,
+                    (unsigned)errHandle->esp_tls_flags);
             } else {
                 printf("[Nayan] TLS probe FAIL fd=%d elapsed_ms=%lu\n", fd, ms);
             }
@@ -616,8 +622,8 @@ class FleetProvisioningService : public IFleetProvisioningService {
             thingName = StdString(thingNameBuf);
         }
 
-        // SPIFFS writes and MQTT teardown must not run on mqtt_task (6 KB stack).
-        if (xTaskCreate(EnrollmentCompleteTask, "enroll_save", 8192, this, 5, nullptr) != pdPASS) {
+        // SPIFFS + JSON serialize must not run on mqtt_task; use dedicated task with ample stack.
+        if (xTaskCreate(EnrollmentCompleteTask, "enroll_save", 12288, this, 5, nullptr) != pdPASS) {
             std::lock_guard<std::mutex> lock(mutex_);
             status = EnrollmentStatus::Failed_Provision;
             logger->Error(Tag::Untagged, "Failed to schedule credential save task");
@@ -628,10 +634,12 @@ class FleetProvisioningService : public IFleetProvisioningService {
         logger->Info(Tag::Untagged, "Saving received credentials for tenantId: " + tenantId);
 
         DeviceIdentityProfileDto identityDto;
-        identityDto.clientCertificatePem = Optional<StdString>(awsDeviceCertPem);
-        identityDto.clientPrivateKeyPem  = Optional<StdString>(devicePrivateKeyPem);
-        identityDto.thingName = Optional<StdString>(thingName);
+        identityDto.clientCertificatePem = Optional<StdString>(std::move(awsDeviceCertPem));
+        identityDto.clientPrivateKeyPem  = Optional<StdString>(std::move(devicePrivateKeyPem));
+        identityDto.thingName = Optional<StdString>(std::move(thingName));
         identityDto.tenantId = Optional<StdString>(tenantId);
+        ownershipToken.clear();
+        awsCaCertificatePem.clear();
 
         deviceService->SetDeviceIdentityProfile(identityDto);
 

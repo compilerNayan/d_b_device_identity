@@ -14,6 +14,9 @@ class DeviceIdentityProfileRepository : public CpaRepository<DeviceIdentityProfi
         Var existingEntity = FindFirst();
         if(existingEntity.has_value()) {
             if(deviceIdentityProfile.mqttEndpoint.has_value()) existingEntity.value().mqttEndpoint = deviceIdentityProfile.mqttEndpoint.value();
+            if(deviceIdentityProfile.tenantId.has_value()) existingEntity.value().tenantId = deviceIdentityProfile.tenantId.value();
+            if(deviceIdentityProfile.deviceType.has_value()) existingEntity.value().deviceType = deviceIdentityProfile.deviceType.value();
+            if(deviceIdentityProfile.thingName.has_value()) existingEntity.value().thingName = deviceIdentityProfile.thingName.value();
             if(deviceIdentityProfile.caCertificatePem.has_value()) existingEntity.value().caCertificatePem = deviceIdentityProfile.caCertificatePem.value();
             if(deviceIdentityProfile.clientCertificatePem.has_value()) existingEntity.value().clientCertificatePem = deviceIdentityProfile.clientCertificatePem.value();
             if(deviceIdentityProfile.clientPrivateKeyPem.has_value()) existingEntity.value().clientPrivateKeyPem = deviceIdentityProfile.clientPrivateKeyPem.value();
