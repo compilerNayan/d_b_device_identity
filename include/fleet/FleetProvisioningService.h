@@ -59,6 +59,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
             credentialSavePending = false;
         }
 
+        mqttInboundReassembly.clear();
         fpProfile = deviceService->GetFleetProvisioningProfile();
         CloseConnection();
         NayanLogHeap("enroll_start");
@@ -114,6 +115,9 @@ class FleetProvisioningService : public IFleetProvisioningService {
     static constexpr UInt kEnrollmentMinFreeHeapBytes = 14000;
     static constexpr UInt kEnrollmentMinLargestBlockBytes = 7000;
     static constexpr Int kEnrollmentHeapWaitMs = 8000;
+    /** CreateKeys response JSON is ~6–10 KB; must fit or be reassembled from chunks. */
+    static constexpr Int kEnrollmentMqttBufferSize = 10240;
+    static constexpr Size kMaxMqttInboundBytes = 16384;
 
     Private esp_mqtt_client_handle_t mqttClient;
     Private Bool mqttStarted;
@@ -130,6 +134,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private StdString ownershipToken;
     Private StdString thingName;
     Private StdString pendingTenantId;
+    Private StdString mqttInboundReassembly;
 
     // Parsing buffers (heap-backed via singleton; not on mqtt_task stack)
     Private Char ownershipBuf[768];
@@ -162,12 +167,23 @@ class FleetProvisioningService : public IFleetProvisioningService {
 
     Private bool json_extract_string(const char *json, const char *key, char *out, size_t out_len) {
         char pattern[64];
-        snprintf(pattern, sizeof(pattern), "\"%s\":\"", key);
-        const char *start = strstr(json, pattern);
-        if (!start) {
+        snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+        const char *keyPos = strstr(json, pattern);
+        if (!keyPos) {
             return false;
         }
-        start += strlen(pattern);
+        const char *colon = strchr(keyPos + strlen(pattern), ':');
+        if (!colon) {
+            return false;
+        }
+        const char *start = colon + 1;
+        while (*start == ' ' || *start == '\t') {
+            ++start;
+        }
+        if (*start != '"') {
+            return false;
+        }
+        ++start;
         const char *end = strchr(start, '"');
         if (!end || static_cast<size_t>(end - start) >= out_len) {
             return false;
@@ -296,8 +312,8 @@ class FleetProvisioningService : public IFleetProvisioningService {
         mqtt_cfg.credentials.authentication.key_len = fpProfile.clientPrivateKeyPem.size() + 1;
         mqtt_cfg.network.disable_auto_reconnect = true;
         mqtt_cfg.network.timeout_ms = kEnrollmentNetworkTimeoutMs;
-        mqtt_cfg.buffer.size = 2048;
-        mqtt_cfg.buffer.out_size = 2048;
+        mqtt_cfg.buffer.size = kEnrollmentMqttBufferSize;
+        mqtt_cfg.buffer.out_size = kEnrollmentMqttBufferSize;
         mqtt_cfg.task.stack_size = 16384;
 
         // Allow DNS/route to AWS IoT to settle (internet check does not validate *.amazonaws.com).
@@ -372,7 +388,12 @@ class FleetProvisioningService : public IFleetProvisioningService {
         StdString payloadStr(payload, len);
 
         if (!json_extract_string(payloadStr.c_str(), "certificateOwnershipToken", ownershipBuf, sizeof(ownershipBuf))) {
-            logger->Error(Tag::Untagged, "Missing certificateOwnershipToken");
+            printf("[Nayan] create_keys parse fail len=%d total_field=%s\n",
+                len,
+                strstr(payloadStr.c_str(), "certificateOwnershipToken") ? "present" : "absent");
+            fflush(stdout);
+            logger->Error(Tag::Untagged,
+                          "Missing certificateOwnershipToken (payload_len=" + std::to_string(len) + ")");
             return;
         }
         if (!json_extract_string(payloadStr.c_str(), "certificateId", certIdBuf, sizeof(certIdBuf))) {
@@ -406,6 +427,57 @@ class FleetProvisioningService : public IFleetProvisioningService {
                                     deviceService->GetSerialNumber());
         esp_mqtt_client_publish(mqttClient, fpProfile.provisionRequestTopic.c_str(),
                                 json.c_str(), static_cast<Int>(json.size()), 1, 0);
+    }
+
+    Private Void DispatchMqttInboundMessage(esp_mqtt_event_handle_t event) {
+        if (!event || !event->data || event->data_len <= 0) {
+            return;
+        }
+
+        const Int totalLen = event->total_data_len > 0 ? event->total_data_len : event->data_len;
+        if (totalLen <= 0 || static_cast<Size>(totalLen) > kMaxMqttInboundBytes) {
+            logger->Error(Tag::Untagged,
+                          "Enrollment MQTT payload too large: " + std::to_string(totalLen));
+            mqttInboundReassembly.clear();
+            return;
+        }
+
+        if (event->current_data_offset == 0) {
+            mqttInboundReassembly.clear();
+            mqttInboundReassembly.reserve(static_cast<Size>(totalLen));
+        }
+
+        if (event->current_data_offset != static_cast<Int>(mqttInboundReassembly.size())) {
+            mqttInboundReassembly.clear();
+            logger->Error(Tag::Untagged, "Enrollment MQTT payload fragment out of order");
+            return;
+        }
+
+        mqttInboundReassembly.append(event->data, static_cast<Size>(event->data_len));
+
+        if (static_cast<Int>(mqttInboundReassembly.size()) < totalLen) {
+            return;
+        }
+
+        printf("[Nayan] mqtt_payload_complete topic_len=%d payload_len=%d\n",
+            event->topic_len, totalLen);
+        fflush(stdout);
+
+        StdString topic(event->topic, event->topic_len);
+        const char* payload = mqttInboundReassembly.c_str();
+        const Int payloadLen = static_cast<Int>(mqttInboundReassembly.size());
+
+        if (topic == fpProfile.createKeysAcceptedTopic) {
+            HandleCreateKeysAccepted(payload, payloadLen);
+        } else if (topic == fpProfile.provisionAcceptedTopic) {
+            HandleProvisionAccepted(payload, payloadLen);
+        } else if (topic == fpProfile.provisionRejectedTopic) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            status = EnrollmentStatus::Failed_Provision;
+            logger->Error(Tag::Untagged, "Provisioning rejected");
+        }
+
+        mqttInboundReassembly.clear();
     }
 
     Private Void HandleProvisionAccepted(CChar* payload, Int len) {
@@ -489,20 +561,9 @@ class FleetProvisioningService : public IFleetProvisioningService {
                 }
                 break;
 
-            case MQTT_EVENT_DATA: {
-                StdString topic(event->topic, event->topic_len);
-
-                if (topic == self->fpProfile.createKeysAcceptedTopic) {
-                    self->HandleCreateKeysAccepted(event->data, event->data_len);
-                } else if (topic == self->fpProfile.provisionAcceptedTopic) {
-                    self->HandleProvisionAccepted(event->data, event->data_len);
-                } else if (topic == self->fpProfile.provisionRejectedTopic) {
-                    std::lock_guard<std::mutex> lock(self->mutex_);
-                    self->status = EnrollmentStatus::Failed_Provision;
-                    self->logger->Error(Tag::Untagged, "Provisioning rejected");
-                }
+            case MQTT_EVENT_DATA:
+                self->DispatchMqttInboundMessage(event);
                 break;
-            }
 
             case MQTT_EVENT_ERROR: {
                 Bool ignoreTeardownError = false;
