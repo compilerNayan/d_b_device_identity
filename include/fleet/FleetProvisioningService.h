@@ -118,6 +118,8 @@ class FleetProvisioningService : public IFleetProvisioningService {
     /** Small MQTT RX buffer; large CreateKeys JSON is reassembled in DispatchMqttInboundMessage. */
     static constexpr Int kEnrollmentMqttBufferSize = 2048;
     static constexpr Int kEnrollmentMqttTaskStackSize = 12288;
+    /** Must fit in largest heap block while enrollment MQTT task is still alive. */
+    static constexpr Int kEnrollmentSaveTaskStackSize = 8192;
     static constexpr Size kMaxMqttInboundBytes = 16384;
 
     Private esp_mqtt_client_handle_t mqttClient;
@@ -158,11 +160,20 @@ class FleetProvisioningService : public IFleetProvisioningService {
 
     /** After provision accepted: save on enroll_save (closes MQTT off mqtt_task). */
     Private Void ScheduleCredentialSave() {
-        if (xTaskCreate(EnrollmentCompleteTask, "enroll_save", 12288, this, 8, nullptr) != pdPASS) {
+        mqttInboundReassembly.clear();
+        if (xTaskCreate(EnrollmentCompleteTask, "enroll_save", kEnrollmentSaveTaskStackSize,
+                        this, 8, nullptr) != pdPASS) {
+            NayanLogHeap("enroll_save_task_fail");
             std::lock_guard<std::mutex> lock(mutex_);
             credentialSavePending = false;
             status = EnrollmentStatus::Failed_Provision;
-            logger->Error(Tag::Untagged, "Failed to schedule credential save task");
+            logger->Error(Tag::Untagged,
+                          "Failed to schedule credential save task (need stack="
+                          + std::to_string(kEnrollmentSaveTaskStackSize)
+                          + " largest_block="
+                          + std::to_string(static_cast<ULong>(
+                              heap_caps_get_largest_free_block(
+                                  MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT))));
         }
     }
 
