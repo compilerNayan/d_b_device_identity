@@ -31,6 +31,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
           mqttStarted(false),
           enrollmentStarted(false),
           pendingSubscriptions(0),
+          credentialSavePending(false),
           status(EnrollmentStatus::NotStarted) {
             fpProfile = deviceService->GetFleetProvisioningProfile();
     }
@@ -54,6 +55,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
         {
             std::lock_guard<std::mutex> lock(mutex_);
             status = EnrollmentStatus::InProgress;
+            credentialSavePending = false;
         }
 
         fpProfile = deviceService->GetFleetProvisioningProfile();
@@ -112,6 +114,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private Bool mqttStarted;
     Private Bool enrollmentStarted;
     Private Int pendingSubscriptions;
+    Private Bool credentialSavePending;
     Private std::mutex mutex_;
     Private EnrollmentStatus status;
 
@@ -134,11 +137,20 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private Static Void EnrollmentCompleteTask(Void* arg) {
         Var self = static_cast<FleetProvisioningService*>(arg);
         const StdString tenantId = self->pendingTenantId;
-        // Tear down enrollment MQTT/TLS before SPIFFS + JSON serialize (needs large heap).
         self->CloseConnection();
         vTaskDelay(pdMS_TO_TICKS(500));
         self->SaveReceivedCredentials(tenantId);
         vTaskDelete(nullptr);
+    }
+
+    /** After provision accepted: save on enroll_save (closes MQTT off mqtt_task). */
+    Private Void ScheduleCredentialSave() {
+        if (xTaskCreate(EnrollmentCompleteTask, "enroll_save", 12288, this, 8, nullptr) != pdPASS) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            credentialSavePending = false;
+            status = EnrollmentStatus::Failed_Provision;
+            logger->Error(Tag::Untagged, "Failed to schedule credential save task");
+        }
     }
 
     Private bool json_extract_string(const char *json, const char *key, char *out, size_t out_len) {
@@ -375,14 +387,11 @@ class FleetProvisioningService : public IFleetProvisioningService {
             std::lock_guard<std::mutex> lock(mutex_);
             pendingTenantId = StdString(tenantIdBuf);
             thingName = StdString(thingNameBuf);
+            credentialSavePending = true;
         }
 
-        // SPIFFS + JSON serialize must not run on mqtt_task; use dedicated task with ample stack.
-        if (xTaskCreate(EnrollmentCompleteTask, "enroll_save", 12288, this, 5, nullptr) != pdPASS) {
-            std::lock_guard<std::mutex> lock(mutex_);
-            status = EnrollmentStatus::Failed_Provision;
-            logger->Error(Tag::Untagged, "Failed to schedule credential save task");
-        }
+        // Close enrollment MQTT before further TLS writes; save SPIFFS off mqtt_task.
+        ScheduleCredentialSave();
     }
 
     Private Void SaveReceivedCredentials(const StdString& tenantId) {
@@ -401,6 +410,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
         {
             std::lock_guard<std::mutex> lock(mutex_);
             status = EnrollmentStatus::Success;
+            credentialSavePending = false;
         }
 
         logger->Info(Tag::Untagged,
@@ -450,6 +460,14 @@ class FleetProvisioningService : public IFleetProvisioningService {
             }
 
             case MQTT_EVENT_ERROR: {
+                Bool ignoreTeardownError = false;
+                {
+                    std::lock_guard<std::mutex> lock(self->mutex_);
+                    ignoreTeardownError = self->credentialSavePending;
+                }
+                if (ignoreTeardownError) {
+                    break;
+                }
                 LogEnrollmentMqttError(self, event);
                 std::lock_guard<std::mutex> lock(self->mutex_);
                 self->status = EnrollmentStatus::Failed_MqttConnect;
@@ -458,6 +476,14 @@ class FleetProvisioningService : public IFleetProvisioningService {
             }
 
             case MQTT_EVENT_DISCONNECTED: {
+                Bool ignoreTeardownError = false;
+                {
+                    std::lock_guard<std::mutex> lock(self->mutex_);
+                    ignoreTeardownError = self->credentialSavePending;
+                }
+                if (ignoreTeardownError) {
+                    break;
+                }
                 std::lock_guard<std::mutex> lock(self->mutex_);
                 if (self->status == EnrollmentStatus::InProgress) {
                     self->status = EnrollmentStatus::Failed_MqttConnect;
