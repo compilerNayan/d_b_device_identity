@@ -12,6 +12,7 @@
 #include <mutex>
 
 #include "esp_err.h"
+#include "esp_heap_caps.h"
 #include "sdkconfig.h"
 #if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
 #include "esp_crt_bundle.h"
@@ -60,6 +61,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
 
         fpProfile = deviceService->GetFleetProvisioningProfile();
         CloseConnection();
+        NayanLogHeap("enroll_start");
         StartMqttClient();
     }
 
@@ -109,6 +111,9 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private StdString enrollmentClientId;
 
     static constexpr Int kEnrollmentNetworkTimeoutMs = 30000;
+    static constexpr UInt kEnrollmentMinFreeHeapBytes = 14000;
+    static constexpr UInt kEnrollmentMinLargestBlockBytes = 7000;
+    static constexpr Int kEnrollmentHeapWaitMs = 8000;
 
     Private esp_mqtt_client_handle_t mqttClient;
     Private Bool mqttStarted;
@@ -138,7 +143,9 @@ class FleetProvisioningService : public IFleetProvisioningService {
         Var self = static_cast<FleetProvisioningService*>(arg);
         const StdString tenantId = self->pendingTenantId;
         self->CloseConnection();
+        NayanLogHeap("enroll_after_mqtt_close");
         vTaskDelay(pdMS_TO_TICKS(500));
+        NayanLogHeap("enroll_before_spiffs_save");
         self->SaveReceivedCredentials(tenantId);
         vTaskDelete(nullptr);
     }
@@ -206,6 +213,40 @@ class FleetProvisioningService : public IFleetProvisioningService {
         return uri;
     }
 
+    Private Static Void NayanLogHeap(CChar* where) {
+        const UInt32 caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+        printf("[Nayan] %s heap_free=%lu heap_min=%lu largest_block=%lu\n",
+            where,
+            (unsigned long)esp_get_free_heap_size(),
+            (unsigned long)esp_get_minimum_free_heap_size(),
+            (unsigned long)heap_caps_get_largest_free_block(caps));
+        fflush(stdout);
+    }
+
+    Private Void WaitForEnrollmentHeap() {
+        NayanLogHeap("heap_wait_start");
+        Const Int stepMs = 200;
+        Int waited = 0;
+        while (waited < kEnrollmentHeapWaitMs) {
+            multi_heap_info_t info{};
+            heap_caps_get_info(&info, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+            if (info.total_free_bytes >= kEnrollmentMinFreeHeapBytes
+                && info.largest_free_block >= kEnrollmentMinLargestBlockBytes) {
+                NayanLogHeap("heap_wait_ok");
+                return;
+            }
+            vTaskDelay(pdMS_TO_TICKS(stepMs));
+            waited += stepMs;
+        }
+        NayanLogHeap("heap_wait_timeout");
+        logger->Warning(Tag::Untagged,
+                        "Enrollment heap still low before TLS: free="
+                        + std::to_string(static_cast<ULong>(esp_get_free_heap_size()))
+                        + " largest_block="
+                        + std::to_string(static_cast<ULong>(
+                            heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT))));
+    }
+
     Private Static Void ParseBrokerHostPort(const StdString& uri, StdString& host, Int& port) {
         port = 8883;
         host.clear();
@@ -255,12 +296,14 @@ class FleetProvisioningService : public IFleetProvisioningService {
         mqtt_cfg.credentials.authentication.key_len = fpProfile.clientPrivateKeyPem.size() + 1;
         mqtt_cfg.network.disable_auto_reconnect = true;
         mqtt_cfg.network.timeout_ms = kEnrollmentNetworkTimeoutMs;
-        mqtt_cfg.buffer.size = 4096;
-        mqtt_cfg.buffer.out_size = 4096;
-        mqtt_cfg.task.stack_size = 20480;
+        mqtt_cfg.buffer.size = 2048;
+        mqtt_cfg.buffer.out_size = 2048;
+        mqtt_cfg.task.stack_size = 16384;
 
         // Allow DNS/route to AWS IoT to settle (internet check does not validate *.amazonaws.com).
         vTaskDelay(pdMS_TO_TICKS(2000));
+        WaitForEnrollmentHeap();
+        NayanLogHeap("before_mqtt_init");
 
         mqttClient = esp_mqtt_client_init(&mqtt_cfg);
         if (!mqttClient) {
@@ -271,6 +314,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
         }
         esp_mqtt_client_register_event(mqttClient, MQTT_EVENT_ANY, MqttEventHandler, this);
         const esp_err_t startErr = esp_mqtt_client_start(mqttClient);
+        NayanLogHeap("after_mqtt_start");
         if (startErr != ESP_OK) {
             logger->Error(Tag::Untagged,
                 "Enrollment MQTT start failed host=" + enrollmentBrokerHost);
@@ -390,6 +434,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
             credentialSavePending = true;
         }
 
+        NayanLogHeap("provision_accepted");
         // Close enrollment MQTT before further TLS writes; save SPIFFS off mqtt_task.
         ScheduleCredentialSave();
     }
@@ -468,6 +513,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
                 if (ignoreTeardownError) {
                     break;
                 }
+                NayanLogHeap("mqtt_error");
                 LogEnrollmentMqttError(self, event);
                 std::lock_guard<std::mutex> lock(self->mutex_);
                 self->status = EnrollmentStatus::Failed_MqttConnect;
