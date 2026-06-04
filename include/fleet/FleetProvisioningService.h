@@ -22,9 +22,9 @@
 #include "server/IDeviceService.h"
 #include "logger/ILogger.h"
 
-// #include "IFleetProvisioningService.h"
+#include "IFleetProvisioningService.h"
 
-/*--@Component--*/
+/* @Component */
 class FleetProvisioningService : public IFleetProvisioningService {
     
     Public FleetProvisioningService()
