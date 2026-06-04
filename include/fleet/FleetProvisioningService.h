@@ -112,11 +112,12 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private StdString enrollmentClientId;
 
     static constexpr Int kEnrollmentNetworkTimeoutMs = 30000;
-    static constexpr UInt kEnrollmentMinFreeHeapBytes = 14000;
-    static constexpr UInt kEnrollmentMinLargestBlockBytes = 7000;
+    static constexpr UInt kEnrollmentMinFreeHeapBytes = 18000;
+    static constexpr UInt kEnrollmentMinLargestBlockBytes = 8000;
     static constexpr Int kEnrollmentHeapWaitMs = 8000;
-    /** CreateKeys response JSON is ~6–10 KB; must fit or be reassembled from chunks. */
-    static constexpr Int kEnrollmentMqttBufferSize = 10240;
+    /** Small MQTT RX buffer; large CreateKeys JSON is reassembled in DispatchMqttInboundMessage. */
+    static constexpr Int kEnrollmentMqttBufferSize = 2048;
+    static constexpr Int kEnrollmentMqttTaskStackSize = 12288;
     static constexpr Size kMaxMqttInboundBytes = 16384;
 
     Private esp_mqtt_client_handle_t mqttClient;
@@ -314,7 +315,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
         mqtt_cfg.network.timeout_ms = kEnrollmentNetworkTimeoutMs;
         mqtt_cfg.buffer.size = kEnrollmentMqttBufferSize;
         mqtt_cfg.buffer.out_size = kEnrollmentMqttBufferSize;
-        mqtt_cfg.task.stack_size = 16384;
+        mqtt_cfg.task.stack_size = kEnrollmentMqttTaskStackSize;
 
         // Allow DNS/route to AWS IoT to settle (internet check does not validate *.amazonaws.com).
         vTaskDelay(pdMS_TO_TICKS(2000));
@@ -328,6 +329,9 @@ class FleetProvisioningService : public IFleetProvisioningService {
             mqttStarted = false;
             return;
         }
+        NayanLogHeap("after_mqtt_init");
+        WaitForEnrollmentHeap();
+
         esp_mqtt_client_register_event(mqttClient, MQTT_EVENT_ANY, MqttEventHandler, this);
         const esp_err_t startErr = esp_mqtt_client_start(mqttClient);
         NayanLogHeap("after_mqtt_start");
