@@ -54,6 +54,13 @@ class FleetProvisioningService : public IFleetProvisioningService {
                      "Starting enrollment for serial=" +
                      deviceService->GetSerialNumber());
 
+        if (!HasSufficientHeapForEnrollment()) {
+            LogInsufficientHeapForEnrollment();
+            std::lock_guard<std::mutex> lock(mutex_);
+            status = EnrollmentStatus::Failed_InsufficientHeap;
+            return;
+        }
+
         {
             std::lock_guard<std::mutex> lock(mutex_);
             status = EnrollmentStatus::InProgress;
@@ -115,6 +122,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private EnrollmentStatus status;
 
     static constexpr size_t kCredentialSaveHeapOverheadBytes = 16384;
+    static constexpr size_t kEnrollmentHeapRequiredBytes = 24576;
     static constexpr Int kMqttCloseWaitStepMs = 50;
     static constexpr Int kMqttCloseWaitTimeoutMs = 5000;
 
@@ -199,6 +207,36 @@ class FleetProvisioningService : public IFleetProvisioningService {
                kCredentialSaveHeapOverheadBytes;
     }
 
+    Private Bool HasSufficientHeapForEnrollment() const {
+        const UInt32 caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+        const size_t freeHeap = esp_get_free_heap_size();
+        const size_t largestBlock = heap_caps_get_largest_free_block(caps);
+        const size_t minContiguousBytes = kEnrollmentHeapRequiredBytes / 2;
+
+        logger->Info(Tag::Untagged,
+                     "Enrollment heap check: required=" +
+                     StdString(std::to_string(kEnrollmentHeapRequiredBytes).c_str()) +
+                     " free=" + StdString(std::to_string(freeHeap).c_str()) +
+                     " largest_block=" +
+                     StdString(std::to_string(largestBlock).c_str()));
+
+        return freeHeap >= kEnrollmentHeapRequiredBytes &&
+               largestBlock >= minContiguousBytes;
+    }
+
+    Private Void LogInsufficientHeapForEnrollment() const {
+        const UInt32 caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+        const size_t freeHeap = esp_get_free_heap_size();
+        const size_t largestBlock = heap_caps_get_largest_free_block(caps);
+
+        logger->Error(Tag::Untagged,
+                      "Insufficient heap to start enrollment: required=" +
+                      StdString(std::to_string(kEnrollmentHeapRequiredBytes).c_str()) +
+                      " free=" + StdString(std::to_string(freeHeap).c_str()) +
+                      " largest_block=" +
+                      StdString(std::to_string(largestBlock).c_str()));
+    }
+
     Private Bool HasSufficientHeapForCredentialSave() const {
         const size_t requiredBytes = EstimateCredentialSaveHeapRequired();
         const UInt32 caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
@@ -279,6 +317,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
         mqtt_cfg.buffer.size = 8192;
         mqtt_cfg.buffer.out_size = 8192;
         mqtt_cfg.task.stack_size = 8192;
+        mqtt_cfg.network.disable_auto_reconnect = true;
 
         mqttClient = esp_mqtt_client_init(&mqtt_cfg);
         esp_mqtt_client_register_event(mqttClient, MQTT_EVENT_ANY, MqttEventHandler, this);
