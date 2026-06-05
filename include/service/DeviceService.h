@@ -54,6 +54,7 @@ class DeviceService : public IDeviceService {
             this->deviceIdentityProfile->caCertificatePem = connectionDetailsProvider->GetDeviceIdentityCaCertificatePem();
             this->deviceIdentityProfile->clientCertificatePem = connectionDetailsProvider->GetDeviceIdentityClientCertificatePem();
             this->deviceIdentityProfile->clientPrivateKeyPem = connectionDetailsProvider->GetDeviceIdentityClientPrivateKeyPem();
+            this->deviceIdentityProfile->thingName = connectionDetailsProvider->GetThingName();
 
             this->deviceIdentityProfile->publishTopics.statusTopic = connectionDetailsProvider->GetDeviceIdentityPublishTopicsStatusTopic();
             this->deviceIdentityProfile->publishTopics.telemetryTopic = connectionDetailsProvider->GetDeviceIdentityPublishTopicsTelemetryTopic();
