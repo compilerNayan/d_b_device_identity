@@ -125,8 +125,14 @@ class FleetProvisioningService : public IFleetProvisioningService {
     static constexpr size_t kEnrollmentHeapRequiredBytes = 24576;
     static constexpr Int kMqttCloseWaitStepMs = 50;
     static constexpr Int kMqttCloseWaitTimeoutMs = 5000;
+    static constexpr size_t kOwnershipBufBytes = 768;
+    static constexpr size_t kCertIdBufBytes = 128;
+    static constexpr size_t kPemEscBufBytes = 4096;
+    static constexpr size_t kPemBufBytes = 4096;
+    static constexpr size_t kProvisionFieldBufBytes = 128;
+    static constexpr UInt32 kParseHeapCaps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
 
-    // Buffers for received credentials
+    // Credential strings held between CreateKeys/RegisterThing and SPIFFS save.
     Private StdString devicePrivateKeyPem;
     Private StdString awsDeviceCertPem;
     Private StdString awsCaCertificatePem;
@@ -134,13 +140,110 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private StdString thingName;
     Private StdString pendingTenantId;
 
-    // Parsing buffers (heap-backed via singleton; not on mqtt_task stack)
-    Private Char ownershipBuf[768];
-    Private Char certIdBuf[128];
-    Private Char keyEscBuf[4096];
-    Private Char certEscBuf[4096];
-    Private Char keyPemBuf[4096];
-    Private Char certPemBuf[4096];
+    /** Scoped heap parse buffers; avoids ~17 KB permanent member footprint and mqtt_task stack use. */
+    struct CreateKeysParseBuffers {
+        Char* ownershipBuf = nullptr;
+        Char* certIdBuf = nullptr;
+        Char* keyEscBuf = nullptr;
+        Char* certEscBuf = nullptr;
+        Char* keyPemBuf = nullptr;
+        Char* certPemBuf = nullptr;
+        const Bool ok;
+
+        CreateKeysParseBuffers()
+            : ok(AllocateAll()) {}
+
+        ~CreateKeysParseBuffers() {
+            FreeAll();
+        }
+
+        CreateKeysParseBuffers(const CreateKeysParseBuffers&) = delete;
+        CreateKeysParseBuffers& operator=(const CreateKeysParseBuffers&) = delete;
+
+    Private
+        static Char* Alloc(size_t bytes) {
+            return static_cast<Char*>(heap_caps_malloc(bytes, kParseHeapCaps));
+        }
+
+        static Void Free(Char* buf) {
+            if (buf) {
+                heap_caps_free(buf);
+            }
+        }
+
+        Bool AllocateAll() {
+            ownershipBuf = Alloc(kOwnershipBufBytes);
+            certIdBuf = Alloc(kCertIdBufBytes);
+            keyEscBuf = Alloc(kPemEscBufBytes);
+            certEscBuf = Alloc(kPemEscBufBytes);
+            keyPemBuf = Alloc(kPemBufBytes);
+            certPemBuf = Alloc(kPemBufBytes);
+            if (ownershipBuf && certIdBuf && keyEscBuf && certEscBuf && keyPemBuf && certPemBuf) {
+                return true;
+            }
+            FreeAll();
+            return false;
+        }
+
+        Void FreeAll() {
+            Free(ownershipBuf);
+            ownershipBuf = nullptr;
+            Free(certIdBuf);
+            certIdBuf = nullptr;
+            Free(keyEscBuf);
+            keyEscBuf = nullptr;
+            Free(certEscBuf);
+            certEscBuf = nullptr;
+            Free(keyPemBuf);
+            keyPemBuf = nullptr;
+            Free(certPemBuf);
+            certPemBuf = nullptr;
+        }
+    };
+
+    struct ProvisionParseBuffers {
+        Char* thingNameBuf = nullptr;
+        Char* tenantIdBuf = nullptr;
+        const Bool ok;
+
+        ProvisionParseBuffers()
+            : ok(AllocateAll()) {}
+
+        ~ProvisionParseBuffers() {
+            FreeAll();
+        }
+
+        ProvisionParseBuffers(const ProvisionParseBuffers&) = delete;
+        ProvisionParseBuffers& operator=(const ProvisionParseBuffers&) = delete;
+
+    Private
+        static Char* Alloc(size_t bytes) {
+            return static_cast<Char*>(heap_caps_malloc(bytes, kParseHeapCaps));
+        }
+
+        static Void Free(Char* buf) {
+            if (buf) {
+                heap_caps_free(buf);
+            }
+        }
+
+        Bool AllocateAll() {
+            thingNameBuf = Alloc(kProvisionFieldBufBytes);
+            tenantIdBuf = Alloc(kProvisionFieldBufBytes);
+            if (thingNameBuf && tenantIdBuf) {
+                return true;
+            }
+            FreeAll();
+            return false;
+        }
+
+        Void FreeAll() {
+            Free(thingNameBuf);
+            thingNameBuf = nullptr;
+            Free(tenantIdBuf);
+            tenantIdBuf = nullptr;
+        }
+    };
 
     Private Static Void EnrollmentCompleteTask(Void* arg) {
         Var self = static_cast<FleetProvisioningService*>(arg);
@@ -341,36 +444,49 @@ class FleetProvisioningService : public IFleetProvisioningService {
     }
 
     Private Void HandleCreateKeysAccepted(CChar* payload, Int len) {
+        CreateKeysParseBuffers parseBufs;
+        if (!parseBufs.ok) {
+            logger->Error(Tag::Untagged,
+                          "Insufficient heap for CreateKeys JSON parse buffers");
+            std::lock_guard<std::mutex> lock(mutex_);
+            status = EnrollmentStatus::Failed_InsufficientHeap;
+            return;
+        }
+
         std::lock_guard<std::mutex> lock(mutex_);
         logger->Info(Tag::Untagged, "CreateKeysAndCertificate ACCEPTED");
 
         StdString payloadStr(payload, len);
 
-        if (!json_extract_string(payloadStr.c_str(), "certificateOwnershipToken", ownershipBuf, sizeof(ownershipBuf))) {
+        if (!json_extract_string(payloadStr.c_str(), "certificateOwnershipToken",
+                                 parseBufs.ownershipBuf, kOwnershipBufBytes)) {
             logger->Error(Tag::Untagged, "Missing certificateOwnershipToken");
             return;
         }
-        if (!json_extract_string(payloadStr.c_str(), "certificateId", certIdBuf, sizeof(certIdBuf))) {
+        if (!json_extract_string(payloadStr.c_str(), "certificateId",
+                                 parseBufs.certIdBuf, kCertIdBufBytes)) {
             logger->Error(Tag::Untagged, "Missing certificateId");
             return;
         }
-        if (!json_extract_string(payloadStr.c_str(), "privateKey", keyEscBuf, sizeof(keyEscBuf))) {
+        if (!json_extract_string(payloadStr.c_str(), "privateKey",
+                                 parseBufs.keyEscBuf, kPemEscBufBytes)) {
             logger->Error(Tag::Untagged, "Missing privateKey");
             return;
         }
-        if (!json_extract_string(payloadStr.c_str(), "certificatePem", certEscBuf, sizeof(certEscBuf))) {
+        if (!json_extract_string(payloadStr.c_str(), "certificatePem",
+                                 parseBufs.certEscBuf, kPemEscBufBytes)) {
             logger->Error(Tag::Untagged, "Missing certificatePem");
             return;
         }
 
-        unescape_json_to_pem(keyEscBuf, keyPemBuf, sizeof(keyPemBuf));
-        unescape_json_to_pem(certEscBuf, certPemBuf, sizeof(certPemBuf));
+        unescape_json_to_pem(parseBufs.keyEscBuf, parseBufs.keyPemBuf, kPemBufBytes);
+        unescape_json_to_pem(parseBufs.certEscBuf, parseBufs.certPemBuf, kPemBufBytes);
 
-        ownershipToken      = ownershipBuf;
-        devicePrivateKeyPem = keyPemBuf;
-        awsDeviceCertPem    = certPemBuf;
+        ownershipToken      = parseBufs.ownershipBuf;
+        devicePrivateKeyPem = parseBufs.keyPemBuf;
+        awsDeviceCertPem    = parseBufs.certPemBuf;
 
-        logger->Info(Tag::Untagged, "certificateId: " + StdString(certIdBuf));
+        logger->Info(Tag::Untagged, "certificateId: " + StdString(parseBufs.certIdBuf));
         logger->Info(Tag::Untagged, "certificateOwnershipToken: " + ownershipToken);
 
         PublishProvisionRequest();
@@ -387,29 +503,38 @@ class FleetProvisioningService : public IFleetProvisioningService {
     }
 
     Private Void HandleProvisionAccepted(CChar* payload, Int len) {
+        ProvisionParseBuffers parseBufs;
+        if (!parseBufs.ok) {
+            logger->Error(Tag::Untagged,
+                          "Insufficient heap for provision JSON parse buffers");
+            std::lock_guard<std::mutex> lock(mutex_);
+            status = EnrollmentStatus::Failed_InsufficientHeap;
+            return;
+        }
+
         StdString payloadStr(payload, len);
 
-        Char thingNameBuf[128];
-        if (!json_extract_string(payloadStr.c_str(), "thingName", thingNameBuf, sizeof(thingNameBuf))) {
+        if (!json_extract_string(payloadStr.c_str(), "thingName",
+                                 parseBufs.thingNameBuf, kProvisionFieldBufBytes)) {
             logger->Error(Tag::Untagged, "Missing thingName in provision response");
             return;
         }
 
-        Char tenantIdBuf[128];
-        if (!json_extract_string(payloadStr.c_str(), "tenantId", tenantIdBuf, sizeof(tenantIdBuf))) {
+        if (!json_extract_string(payloadStr.c_str(), "tenantId",
+                                 parseBufs.tenantIdBuf, kProvisionFieldBufBytes)) {
             logger->Error(Tag::Untagged, "Missing tenantId in provision response");
             return;
         }
 
         logger->Info(Tag::Untagged, "========== ENROLLMENT SUCCESS ==========");
-        logger->Info(Tag::Untagged, "thingName: " + StdString(thingNameBuf));
+        logger->Info(Tag::Untagged, "thingName: " + StdString(parseBufs.thingNameBuf));
         logger->Info(Tag::Untagged, "SerialNumber: " + deviceService->GetSerialNumber());
-        logger->Info(Tag::Untagged, "tenantId: " + StdString(tenantIdBuf));
+        logger->Info(Tag::Untagged, "tenantId: " + StdString(parseBufs.tenantIdBuf));
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            pendingTenantId = StdString(tenantIdBuf);
-            thingName = StdString(thingNameBuf);
+            pendingTenantId = StdString(parseBufs.tenantIdBuf);
+            thingName = StdString(parseBufs.thingNameBuf);
         }
 
         // SPIFFS writes and MQTT teardown must not run on mqtt_task (6 KB stack).
@@ -418,6 +543,14 @@ class FleetProvisioningService : public IFleetProvisioningService {
             status = EnrollmentStatus::Failed_Provision;
             logger->Error(Tag::Untagged, "Failed to schedule credential save task");
         }
+    }
+
+    Private Void ClearEnrollmentCredentialStrings() {
+        awsDeviceCertPem = "";
+        devicePrivateKeyPem = "";
+        thingName = "";
+        pendingTenantId = "";
+        ownershipToken = "";
     }
 
     Private Void SaveReceivedCredentials(const StdString& tenantId) {
@@ -430,6 +563,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
         identityDto.tenantId = Optional<StdString>(tenantId);
 
         deviceService->SetDeviceIdentityProfile(identityDto);
+        ClearEnrollmentCredentialStrings();
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
