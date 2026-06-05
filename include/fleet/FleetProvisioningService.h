@@ -10,6 +10,8 @@
 #include "esp_wifi.h"
 #include "mqtt_client.h"
 #include "nvs_flash.h"
+#include "esp_heap_caps.h"
+#include "esp_system.h"
 #include <sys/time.h>
 #include <errno.h>
 #include <string.h>
@@ -30,6 +32,8 @@ class FleetProvisioningService : public IFleetProvisioningService {
           mqttStarted(false),
           enrollmentStarted(false),
           pendingSubscriptions(0),
+          awaitingMqttClose(false),
+          mqttConnectionClosed(false),
           status(EnrollmentStatus::NotStarted) {
             fpProfile = deviceService->GetFleetProvisioningProfile();
     }
@@ -105,8 +109,14 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private Bool mqttStarted;
     Private Bool enrollmentStarted;
     Private Int pendingSubscriptions;
+    Private Bool awaitingMqttClose;
+    Private Bool mqttConnectionClosed;
     Private std::mutex mutex_;
     Private EnrollmentStatus status;
+
+    static constexpr size_t kCredentialSaveHeapOverheadBytes = 16384;
+    static constexpr Int kMqttCloseWaitStepMs = 50;
+    static constexpr Int kMqttCloseWaitTimeoutMs = 5000;
 
     // Buffers for received credentials
     Private StdString devicePrivateKeyPem;
@@ -126,9 +136,98 @@ class FleetProvisioningService : public IFleetProvisioningService {
 
     Private Static Void EnrollmentCompleteTask(Void* arg) {
         Var self = static_cast<FleetProvisioningService*>(arg);
-        self->SaveReceivedCredentials(self->pendingTenantId);
+        StdString tenantId;
+        {
+            std::lock_guard<std::mutex> lock(self->mutex_);
+            tenantId = self->pendingTenantId;
+            self->awaitingMqttClose = true;
+            self->mqttConnectionClosed = false;
+        }
+
+        self->LogHeapStatus("Before MQTT close");
         self->CloseConnection();
+        self->WaitForConnectionClose();
+
+        if (self->HasSufficientHeapForCredentialSave()) {
+            self->SaveReceivedCredentials(tenantId);
+        } else {
+            self->LogInsufficientHeapForCredentialSave();
+            std::lock_guard<std::mutex> lock(self->mutex_);
+            self->status = EnrollmentStatus::Failed_Provision;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(self->mutex_);
+            self->awaitingMqttClose = false;
+        }
         vTaskDelete(nullptr);
+    }
+
+    Private Void WaitForConnectionClose() {
+        Int waited = 0;
+        while (waited < kMqttCloseWaitTimeoutMs) {
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                if (mqttConnectionClosed || (!mqttClient && !mqttStarted)) {
+                    logger->Info(Tag::Untagged, "MQTT connection close completed");
+                    return;
+                }
+            }
+            vTaskDelay(pdMS_TO_TICKS(kMqttCloseWaitStepMs));
+            waited += kMqttCloseWaitStepMs;
+        }
+        logger->Error(Tag::Untagged, "Timed out waiting for MQTT connection close");
+    }
+
+    Private Void LogHeapStatus(const StdString& context) const {
+        const UInt32 caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+        const size_t freeHeap = esp_get_free_heap_size();
+        const size_t minHeap = esp_get_minimum_free_heap_size();
+        const size_t largestBlock = heap_caps_get_largest_free_block(caps);
+
+        logger->Info(Tag::Untagged,
+                     context + " heap_free=" +
+                     StdString(std::to_string(freeHeap).c_str()) +
+                     " heap_min=" + StdString(std::to_string(minHeap).c_str()) +
+                     " largest_block=" +
+                     StdString(std::to_string(largestBlock).c_str()));
+    }
+
+    Private size_t EstimateCredentialSaveHeapRequired() const {
+        return awsDeviceCertPem.size() + devicePrivateKeyPem.size() +
+               thingName.size() + pendingTenantId.size() +
+               kCredentialSaveHeapOverheadBytes;
+    }
+
+    Private Bool HasSufficientHeapForCredentialSave() const {
+        const size_t requiredBytes = EstimateCredentialSaveHeapRequired();
+        const UInt32 caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+        const size_t freeHeap = esp_get_free_heap_size();
+        const size_t largestBlock = heap_caps_get_largest_free_block(caps);
+        const size_t minContiguousBytes = requiredBytes / 2;
+
+        logger->Info(Tag::Untagged,
+                     "Credential save heap check: required=" +
+                     StdString(std::to_string(requiredBytes).c_str()) +
+                     " free=" + StdString(std::to_string(freeHeap).c_str()) +
+                     " largest_block=" +
+                     StdString(std::to_string(largestBlock).c_str()));
+
+        return freeHeap >= requiredBytes && largestBlock >= minContiguousBytes;
+    }
+
+    Private Void LogInsufficientHeapForCredentialSave() const {
+        const size_t requiredBytes = EstimateCredentialSaveHeapRequired();
+        const UInt32 caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+        const size_t freeHeap = esp_get_free_heap_size();
+        const size_t largestBlock = heap_caps_get_largest_free_block(caps);
+
+        logger->Error(Tag::Untagged,
+                      "Insufficient heap to save enrollment credentials: required=" +
+                      StdString(std::to_string(requiredBytes).c_str()) +
+                      " free=" + StdString(std::to_string(freeHeap).c_str()) +
+                      " largest_block=" +
+                      StdString(std::to_string(largestBlock).c_str()));
     }
 
     Private bool json_extract_string(const char *json, const char *key, char *out, size_t out_len) {
@@ -345,7 +444,11 @@ class FleetProvisioningService : public IFleetProvisioningService {
 
             case MQTT_EVENT_DISCONNECTED: {
                 std::lock_guard<std::mutex> lock(self->mutex_);
-                if (self->status == EnrollmentStatus::InProgress) {
+                if (self->awaitingMqttClose) {
+                    self->mqttConnectionClosed = true;
+                    self->logger->Info(Tag::Untagged,
+                                       "MQTT disconnected during enrollment teardown");
+                } else if (self->status == EnrollmentStatus::InProgress) {
                     self->status = EnrollmentStatus::Failed_MqttConnect;
                     self->logger->Error(Tag::Untagged, "MQTT disconnected during enrollment");
                 }
