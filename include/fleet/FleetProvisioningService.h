@@ -21,6 +21,7 @@
 #include "StandardDefines.h"
 #include "server/IDeviceService.h"
 #include "logger/ILogger.h"
+#include "internal/06-server-operations/01-interface/02-ICloudServer.h"
 
 #include "IFleetProvisioningService.h"
 
@@ -108,6 +109,9 @@ class FleetProvisioningService : public IFleetProvisioningService {
 
     /* @Autowired */
     Private ILoggerPtr logger;
+
+    /* @Autowired */
+    Private ICloudServerPtr cloudServer;
 
     FleetProvisioningProfileData fpProfile;
 
@@ -556,6 +560,9 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private Void SaveReceivedCredentials(const StdString& tenantId) {
         logger->Info(Tag::Untagged, "Saving received credentials for tenantId: " + tenantId);
 
+        const StdString savedThingName = thingName;
+        const StdString serialNumber = deviceService->GetSerialNumber();
+
         DeviceIdentityProfileDto identityDto;
         identityDto.clientCertificatePem = Optional<StdString>(awsDeviceCertPem);
         identityDto.clientPrivateKeyPem  = Optional<StdString>(devicePrivateKeyPem);
@@ -563,6 +570,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
         identityDto.tenantId = Optional<StdString>(tenantId);
 
         deviceService->SetDeviceIdentityProfile(identityDto);
+        PublishEnrollmentCompleteMessage(tenantId, savedThingName, serialNumber);
         ClearEnrollmentCredentialStrings();
 
         {
@@ -573,6 +581,38 @@ class FleetProvisioningService : public IFleetProvisioningService {
         logger->Info(Tag::Untagged,
                      "Saved device identity profile for serial=" +
                      deviceService->GetSerialNumber());
+    }
+
+    Private Void PublishEnrollmentCompleteMessage(
+            const StdString& tenantId,
+            const StdString& deviceId,
+            const StdString& serialNumber) {
+        if (cloudServer == nullptr) {
+            logger->Warning(Tag::Untagged, "Cloud server unavailable; skipping lifecycle/enrolled publish");
+            return;
+        }
+
+        const StdString enrolledAt = FormatUtcTimestamp();
+        const StdString payload =
+            "{\"tenantId\":\"" + tenantId +
+            "\",\"deviceId\":\"" + deviceId +
+            "\",\"serialNumber\":\"" + serialNumber +
+            "\",\"enrolledAt\":\"" + enrolledAt + "\"}";
+
+        if (cloudServer->PublishEnrollmentComplete(payload)) {
+            logger->Info(Tag::Untagged, "Queued lifecycle/enrolled publish");
+        } else {
+            logger->Warning(Tag::Untagged, "Failed to queue lifecycle/enrolled publish");
+        }
+    }
+
+    Private Static StdString FormatUtcTimestamp() {
+        time_t now = time(nullptr);
+        struct tm utc;
+        gmtime_r(&now, &utc);
+        char buffer[32];
+        strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &utc);
+        return StdString(buffer);
     }
 
     Private Static Void MqttEventHandler(Void* handler_args, esp_event_base_t base,
