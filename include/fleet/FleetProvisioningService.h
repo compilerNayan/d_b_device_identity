@@ -21,7 +21,7 @@
 #include "StandardDefines.h"
 #include "server/IDeviceService.h"
 #include "logger/ILogger.h"
-#include "internal/06-server-operations/01-interface/02-ICloudServer.h"
+#include "communication/IServerProvider.h"
 
 #include "IFleetProvisioningService.h"
 
@@ -111,7 +111,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
     Private ILoggerPtr logger;
 
     /* @Autowired */
-    Private ICloudServerPtr cloudServer;
+    Private IServerProviderPtr serverProvider;
 
     FleetProvisioningProfileData fpProfile;
 
@@ -587,6 +587,9 @@ class FleetProvisioningService : public IFleetProvisioningService {
             const StdString& tenantId,
             const StdString& deviceId,
             const StdString& serialNumber) {
+
+        ICloudServerPtr cloudServer = serverProvider->GetCloudServerPtr();
+
         if (cloudServer == nullptr) {
             logger->Warning(Tag::Untagged, "Cloud server unavailable; skipping lifecycle/enrolled publish");
             return;
