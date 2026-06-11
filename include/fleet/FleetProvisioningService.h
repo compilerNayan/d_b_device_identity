@@ -21,6 +21,9 @@
 #include "StandardDefines.h"
 #include "server/IDeviceService.h"
 #include "logger/ILogger.h"
+#include "communication/IHttpRequest.h"
+#include "communication/RequestSource.h"
+#include "communication/IHttpResponse.h"
 #include "communication/IServerProvider.h"
 
 #include "IFleetProvisioningService.h"
