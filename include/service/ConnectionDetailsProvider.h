@@ -144,6 +144,21 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
         return deviceIdentityPublishTopicsEventsTopic;
     }
 
+    Public StdString GetDeviceIdentityPublishTopicsWater30mBucketTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return deviceIdentityPublishTopicsWater30mBucketTopic;
+    }
+
+    Public StdString GetDeviceIdentityPublishTopicsWater1sBucketTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return deviceIdentityPublishTopicsWater1sBucketTopic;
+    }
+
+    Public StdString GetDeviceIdentityPublishTopicsLifecycleEnrolledTopic() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return deviceIdentityPublishTopicsLifecycleEnrolledTopic;
+    }
+
     Public StdString GetDeviceIdentitySubscribeTopicsCommandTopic() const override {
         std::lock_guard<std::mutex> lock(mutex_);
         return deviceIdentitySubscribeTopicsCommandTopic;
@@ -245,7 +260,11 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
             deviceIdentityPublishTopicsTelemetryTopic = deviceIdentityTopicsPrefix + "/telemetry";
             deviceIdentityPublishTopicsLogsTopic = deviceIdentityTopicsPrefix + "/logs";
             deviceIdentityPublishTopicsEventsTopic = deviceIdentityTopicsPrefix + "/events";
-        
+
+            deviceIdentityPublishTopicsWater30mBucketTopic = deviceIdentityTopicsPrefix + "/water/30m";
+            deviceIdentityPublishTopicsWater1sBucketTopic = deviceIdentityTopicsPrefix + "/water/1s";
+            deviceIdentityPublishTopicsLifecycleEnrolledTopic = deviceIdentityTopicsPrefix + "/lifecycle/enrolled";
+            
             deviceIdentitySubscribeTopicsCommandTopic = deviceIdentityTopicsPrefix + "/command";
             deviceIdentitySubscribeTopicsOtaUpdateTopic = deviceIdentityTopicsPrefix + "/ota/update";
             deviceIdentitySubscribeTopicsFeatureFlagTopic = deviceIdentityTopicsPrefix + "/feature/flag";
@@ -276,6 +295,15 @@ class ConnectionDetailsProvider final : public IConnectionDetailsProvider {
                 }
                 if(deviceIdentityProfileEntity.publishTopics->eventsTopic.has_value() && !deviceIdentityProfileEntity.publishTopics->eventsTopic.value().empty()) {
                     deviceIdentityPublishTopicsEventsTopic = deviceIdentityTopicsPrefix + deviceIdentityProfileEntity.publishTopics->eventsTopic.value();
+                }
+                if(deviceIdentityProfileEntity.publishTopics->water30mBucketTopic.has_value() && !deviceIdentityProfileEntity.publishTopics->water30mBucketTopic.value().empty()) {
+                    deviceIdentityPublishTopicsWater30mBucketTopic = deviceIdentityTopicsPrefix + deviceIdentityProfileEntity.publishTopics->water30mBucketTopic.value();
+                }
+                if(deviceIdentityProfileEntity.publishTopics->water1sBucketTopic.has_value() && !deviceIdentityProfileEntity.publishTopics->water1sBucketTopic.value().empty()) {
+                    deviceIdentityPublishTopicsWater1sBucketTopic = deviceIdentityTopicsPrefix + deviceIdentityProfileEntity.publishTopics->water1sBucketTopic.value();
+                }
+                if(deviceIdentityProfileEntity.publishTopics->lifecycleEnrolledTopic.has_value() && !deviceIdentityProfileEntity.publishTopics->lifecycleEnrolledTopic.value().empty()) {
+                    deviceIdentityPublishTopicsLifecycleEnrolledTopic = deviceIdentityTopicsPrefix + deviceIdentityProfileEntity.publishTopics->lifecycleEnrolledTopic.value();
                 }
             }
 
@@ -401,6 +429,10 @@ ok5rte626z1PeQc30Rtf45RMIiKla3iGOTsIX02gipx9a7vSyQg=
     Private StdString deviceIdentityPublishTopicsTelemetryTopic = deviceIdentityTopicsPrefix + "/telemetry";
     Private StdString deviceIdentityPublishTopicsLogsTopic = deviceIdentityTopicsPrefix + "/logs";
     Private StdString deviceIdentityPublishTopicsEventsTopic = deviceIdentityTopicsPrefix + "/events";
+
+    Private StdString deviceIdentityPublishTopicsWater30mBucketTopic = deviceIdentityTopicsPrefix + "/water/30m";
+    Private StdString deviceIdentityPublishTopicsWater1sBucketTopic = deviceIdentityTopicsPrefix + "/water/1s";
+    Private StdString deviceIdentityPublishTopicsLifecycleEnrolledTopic = deviceIdentityTopicsPrefix + "/lifecycle/enrolled";
 
     Private StdString deviceIdentitySubscribeTopicsCommandTopic = deviceIdentityTopicsPrefix + "/command";
     Private StdString deviceIdentitySubscribeTopicsOtaUpdateTopic = deviceIdentityTopicsPrefix + "/ota/update";

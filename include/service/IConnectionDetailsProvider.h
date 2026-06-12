@@ -41,6 +41,10 @@ class IConnectionDetailsProvider {
     Public Virtual StdString GetDeviceIdentityPublishTopicsLogsTopic() const = 0;
     Public Virtual StdString GetDeviceIdentityPublishTopicsEventsTopic() const = 0;
 
+    Public Virtual StdString GetDeviceIdentityPublishTopicsWater30mBucketTopic() const = 0;
+    Public Virtual StdString GetDeviceIdentityPublishTopicsWater1sBucketTopic() const = 0;
+    Public Virtual StdString GetDeviceIdentityPublishTopicsLifecycleEnrolledTopic() const = 0;
+
     Public Virtual StdString GetDeviceIdentitySubscribeTopicsCommandTopic() const = 0;
     Public Virtual StdString GetDeviceIdentitySubscribeTopicsOtaUpdateTopic() const = 0;
     Public Virtual StdString GetDeviceIdentitySubscribeTopicsFeatureFlagTopic() const = 0;

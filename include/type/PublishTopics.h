@@ -13,6 +13,12 @@ class PublishTopics {
     Public optional<StdString> logsTopic;
 
     Public optional<StdString> eventsTopic;
+
+    Public optional<StdString> water30mBucketTopic;
+
+    Public optional<StdString> water1sBucketTopic;
+
+    Public optional<StdString> lifecycleEnrolledTopic;
 };
 
 #endif // PUBLISHTOPICS_H

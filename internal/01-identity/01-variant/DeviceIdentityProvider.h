@@ -85,7 +85,7 @@ class DeviceIdentityProvider : public IDeviceIdentityProvider {
     }
 
     Private Void GenerateDeviceType() {
-        deviceType = "switch";
+        deviceType = "water_meter";
     }
 
     Private StdString serialNumber;
