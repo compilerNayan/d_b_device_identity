@@ -28,6 +28,7 @@
 
 #include "IFleetProvisioningService.h"
 
+#ifdef USE_MQTT_FLEET_PROVISIONING
 /* @Component */
 class FleetProvisioningService : public IFleetProvisioningService {
     
@@ -679,5 +680,7 @@ class FleetProvisioningService : public IFleetProvisioningService {
         }
     }
 };
+
+#endif // USE_MQTT_FLEET_PROVISIONING
 
 #endif // FLEETPROVISIONINGSERVICE_H
