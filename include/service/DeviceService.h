@@ -60,6 +60,9 @@ class DeviceService : public IDeviceService {
             this->deviceIdentityProfile->publishTopics.telemetryTopic = connectionDetailsProvider->GetDeviceIdentityPublishTopicsTelemetryTopic();
             this->deviceIdentityProfile->publishTopics.logsTopic = connectionDetailsProvider->GetDeviceIdentityPublishTopicsLogsTopic();
             this->deviceIdentityProfile->publishTopics.eventsTopic = connectionDetailsProvider->GetDeviceIdentityPublishTopicsEventsTopic();
+            this->deviceIdentityProfile->publishTopics.water30mBucketTopic = connectionDetailsProvider->GetDeviceIdentityPublishTopicsWater30mBucketTopic();
+            this->deviceIdentityProfile->publishTopics.water1sBucketTopic = connectionDetailsProvider->GetDeviceIdentityPublishTopicsWater1sBucketTopic();
+            this->deviceIdentityProfile->publishTopics.lifecycleEnrolledTopic = connectionDetailsProvider->GetDeviceIdentityPublishTopicsLifecycleEnrolledTopic();
     
             this->deviceIdentityProfile->subscribeTopics.commandTopic = connectionDetailsProvider->GetDeviceIdentitySubscribeTopicsCommandTopic();
             this->deviceIdentityProfile->subscribeTopics.otaUpdateTopic = connectionDetailsProvider->GetDeviceIdentitySubscribeTopicsOtaUpdateTopic();
