@@ -6,6 +6,8 @@
 /* @Serializable */
 class EnrollmentStatusResponseDto {
     Public optional<Bool> enrolled;
+    Public optional<Bool> failed;
+    Public optional<StdString> failureReason;
     Public optional<StdString> tenantId;
     Public optional<StdString> thingName;
     Public optional<StdString> deviceType;
@@ -14,6 +16,8 @@ class EnrollmentStatusResponseDto {
 
     Public EnrollmentStatusResponseDto()
         : enrolled(),
+          failed(),
+          failureReason(),
           tenantId(),
           thingName(),
           deviceType(),

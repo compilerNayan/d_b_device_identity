@@ -71,6 +71,8 @@ class SocketFleetProvisioningService final : public IFleetProvisioningService {
             logger->Info(Tag::Untagged, "Beginning socket enrollment request");
         }
 
+        enrollmentService->ClearEnrollmentFailure();
+
         {
             std::lock_guard<std::mutex> lock(mutex_);
             status = EnrollmentStatus::InProgress;
@@ -87,6 +89,9 @@ class SocketFleetProvisioningService final : public IFleetProvisioningService {
 
     Public EnrollmentStatus GetEnrollmentStatus() override {
         std::lock_guard<std::mutex> lock(mutex_);
+        if (enrollmentService != nullptr && enrollmentService->HasEnrollmentFailed()) {
+            return EnrollmentStatus::Failed_Unknown;
+        }
         if (enrollmentService != nullptr && enrollmentService->IsEnrolled()) {
             if (status == EnrollmentStatus::AlreadyEnrolled) {
                 return EnrollmentStatus::AlreadyEnrolled;
@@ -101,6 +106,12 @@ class SocketFleetProvisioningService final : public IFleetProvisioningService {
         Int waitedMs = 0;
 
         while (waitedMs < timeoutMs) {
+            if (enrollmentService != nullptr && enrollmentService->HasEnrollmentFailed()) {
+                std::lock_guard<std::mutex> lock(mutex_);
+                status = EnrollmentStatus::Failed_Unknown;
+                return status;
+            }
+
             if (enrollmentService != nullptr && enrollmentService->IsEnrolled()) {
                 std::lock_guard<std::mutex> lock(mutex_);
                 if (status == EnrollmentStatus::AlreadyEnrolled) {

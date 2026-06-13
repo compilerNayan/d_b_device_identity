@@ -12,6 +12,9 @@
  * POST /device-enrollment/notify
  * Body: EnrollmentNotifyRequestDto
  *
+ * POST /device-enrollment/failure
+ * Body: EnrollmentFailureRequestDto
+ *
  * GET /device-enrollment/status
  */
 /* @RestController */
@@ -37,6 +40,19 @@ class EnrollmentController final : public IEnrollmentController {
                     "[EnrollmentController] notify tenantId=" + tenantId);
         }
         return enrollmentService->SavePostEnrollmentDetails(request);
+    }
+
+    /* @PostMapping("/failure") */
+    Public Virtual EnrollmentFailureResponseDto NotifyEnrollmentFailure(
+            /* @RequestBody */ EnrollmentFailureRequestDto request) override {
+        if (logger != nullptr) {
+            const StdString reason =
+                    request.reason.has_value() ? request.reason.value() : "";
+            logger->Warning(
+                    Tag::Untagged,
+                    "[EnrollmentController] failure reason=" + reason);
+        }
+        return enrollmentService->NotifyEnrollmentFailure(request);
     }
 
     /* @GetMapping("/status") */
