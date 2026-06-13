@@ -1,3 +1,4 @@
+#ifdef DJSKLDJS
 #ifndef FLEETPROVISIONINGSERVICE_H
 #define FLEETPROVISIONINGSERVICE_H
 
@@ -684,3 +685,4 @@ class FleetProvisioningService : public IFleetProvisioningService {
 #endif // USE_MQTT_FLEET_PROVISIONING
 
 #endif // FLEETPROVISIONINGSERVICE_H
+#endif // DJSKLDJS

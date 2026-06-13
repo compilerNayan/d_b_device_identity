@@ -10,7 +10,6 @@
 #include <StandardDefines.h>
 #include "logger/ILogger.h"
 #include "communication/IServerProvider.h"
-#include "communication/ICloudServer.h"
 #include "IFleetProvisioningService.h"
 #include "../service/IEnrollmentService.h"
 
